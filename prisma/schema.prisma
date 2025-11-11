@@ -1,0 +1,185 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id             Int      @id @default(autoincrement())
+  email          String   @unique
+  name           String
+  password       String
+  roleId         Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  role           Role     @relation(fields: [roleId], references: [id])
+  slug           String   @unique @default(uuid())
+  profilePicture String
+  Media          Media[]
+
+  @@index([roleId], map: "users_roleId_fkey")
+  @@map("users")
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
+  users       User[]
+  slug        String           @unique @default(uuid())
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  roles       RolePermission[]
+  slug        String           @unique @default(uuid())
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  role         Role       @relation(fields: [roleId], references: [id])
+  slug         String     @unique @default(uuid())
+
+  @@id([roleId, permissionId])
+  @@index([permissionId], map: "role_permissions_permissionId_fkey")
+  @@map("role_permissions")
+}
+
+model Media {
+  id             Int        @id @default(autoincrement())
+  slug           String     @unique @default(uuid())
+  filename       String // Original file name
+  storedFilename String // Name stored in the server
+  url            String // Public URL or path
+  type           MediaType // Enum: IMAGE, VIDEO, etc.
+  mimetype       String
+  extension      String
+  size           Int // In bytes
+  title          String? // Optional human-readable title
+  altText        String? // Alt text (for images)
+  description    String? // Optional description
+  uploadedById   Int // Reference to User
+  uploadedBy     User       @relation(fields: [uploadedById], references: [id])
+  uploadedAt     DateTime   @default(now())
+  width          Int? // Optional: for images
+  height         Int? // Optional: for images
+  visibility     Visibility @default(PUBLIC) // PUBLIC, PRIVATE, RESTRICTED
+  isDeleted      Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  Product        Product?   @relation(fields: [productId], references: [id])
+  productId      Int?
+
+  @@map("medias")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  OTHER
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  RESTRICTED
+}
+
+model Product {
+  id                  Int                   @id @default(autoincrement())
+  slug                String                @unique @default(uuid())
+  title               String
+  description         Json?
+  media               Media[]
+  type                String
+  vendor              String
+  variants            Variant[]
+  status              ProductStatus         @default(ACTIVE)
+  price               Float                 @default(0.0)
+  compareAtPrice      Float?
+  costPerItem         Float?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  MediaProductDetails MediaProductDetails[]
+  Category            Category?             @relation(fields: [categoryId], references: [id])
+  categoryId          Int? // <-- changed from String? to Int?
+
+  @@map("products")
+}
+
+model Category {
+  id        Int        @id @default(autoincrement())
+  name      String
+  slug      String     @unique @default(uuid())
+  parentId  Int? // <-- fixed type to match `id`
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryHierarchy")
+  products  Product[] // ← relationship to Product
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Variant {
+  id             Int     @id @default(autoincrement())
+  product        Product @relation(fields: [productId], references: [id])
+  productId      Int
+  size           String
+  color          String
+  material       String  @default("")
+  price          Float
+  compareAtPrice Float?
+  costPerItem    Float?
+  stock          Int     @default(0)
+  sku            String
+  imageVariant   String
+  slug           String  @unique @default(uuid())
+
+  @@map("varaints")
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model MediaProductDetails {
+  id        Int      @id @default(autoincrement())
+  url       String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId Int
+  slug      String   @unique @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("media_product_details")
+}
