@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -73,7 +74,7 @@ export default function DynamicTable({
   // --- Handle filter changes ---
   const handleFilterChange = (key: string, value: string) => {
     setFilterValues((prev) => ({ ...prev, [key]: value }));
-    setCurrentPage(1); // reset to page 1 after filtering
+    setCurrentPage(1);
   };
 
   return (
@@ -152,20 +153,29 @@ export default function DynamicTable({
                     <TableCell key={col}>{String(row[col] ?? "")}</TableCell>
                   ))}
                   <TableCell className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onView?.(row)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit?.(row)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    {/* View → /products/[slug] */}
+                    <Link href={`/products/${row.slug}`} passHref>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onView?.(row)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </Link>
+
+                    {/* Edit → /products/edit/[slug] */}
+                    <Link href={`/products/edit/${row.slug}`} passHref>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit?.(row)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Link>
+
+                    {/* Delete stays normal */}
                     <Button
                       variant="ghost"
                       size="sm"

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 export const products = [
   {
     id: 1,
-    slug: uuidv4(),
+    slug: "c8c1f6e5-4a62-4cbe-90a2-ecb6b68a10a1",
     name: "Wireless Mouse",
     price: 19.99,
     category: "Electronics",
@@ -12,7 +12,7 @@ export const products = [
   },
   {
     id: 2,
-    slug: uuidv4(),
+    slug: "4a02b78c-703d-4b15-9d44-72cb00e96b94",
     name: "Mechanical Keyboard",
     price: 79.5,
     category: "Electronics",
@@ -21,7 +21,7 @@ export const products = [
   },
   {
     id: 3,
-    slug: uuidv4(),
+    slug: "d20b2a72-8e9e-4748-b0f7-02854d7c9381",
     name: "Noise Cancelling Headphones",
     price: 149.0,
     category: "Electronics",
@@ -30,7 +30,7 @@ export const products = [
   },
   {
     id: 4,
-    slug: uuidv4(),
+    slug: "9a33b25c-8c6e-4b18-9a3c-1747b826a0de",
     name: "Smartphone Stand",
     price: 12.99,
     category: "Accessories",
@@ -39,7 +39,7 @@ export const products = [
   },
   {
     id: 5,
-    slug: uuidv4(),
+    slug: "f04d5c93-29e7-4d49-87e1-66125d56d4e9",
     name: "USB-C Hub 7-in-1",
     price: 34.95,
     category: "Electronics",
@@ -48,7 +48,7 @@ export const products = [
   },
   {
     id: 6,
-    slug: uuidv4(),
+    slug: "1df1b0d0-91b5-4eb9-9c8b-2d7ebffdfd7a",
     name: "Laptop Sleeve 15-inch",
     price: 25.0,
     category: "Accessories",
@@ -57,7 +57,7 @@ export const products = [
   },
   {
     id: 7,
-    slug: uuidv4(),
+    slug: "ec28e081-c09f-4d6d-b24f-8ecb1db6f44a",
     name: "4K Monitor 27-inch",
     price: 299.99,
     category: "Electronics",
@@ -66,7 +66,7 @@ export const products = [
   },
   {
     id: 8,
-    slug: uuidv4(),
+    slug: "a41de4d0-7f82-4728-b29f-11b7f991f1e1",
     name: "Bluetooth Speaker",
     price: 59.99,
     category: "Electronics",
@@ -75,7 +75,7 @@ export const products = [
   },
   {
     id: 9,
-    slug: uuidv4(),
+    slug: "c09e6c53-2340-41c2-96d2-ec7f3a3a0e8e",
     name: "Ergonomic Office Chair",
     price: 189.99,
     category: "Furniture",
@@ -84,7 +84,7 @@ export const products = [
   },
   {
     id: 10,
-    slug: uuidv4(),
+    slug: "b3c16f3d-b6a1-47aa-8c03-5cf3e6e8f8c2",
     name: "Standing Desk Converter",
     price: 129.5,
     category: "Furniture",
@@ -93,7 +93,7 @@ export const products = [
   },
   {
     id: 11,
-    slug: uuidv4(),
+    slug: "e0fefcb4-fb47-4b1d-bcf9-59de35e13b4d",
     name: "Wireless Charger Pad",
     price: 22.99,
     category: "Electronics",
@@ -102,7 +102,7 @@ export const products = [
   },
   {
     id: 12,
-    slug: uuidv4(),
+    slug: "0d61d0d8-b497-40bb-9a4e-8cdbfa72b9d3",
     name: "LED Desk Lamp",
     price: 39.99,
     category: "Home",
@@ -111,7 +111,7 @@ export const products = [
   },
   {
     id: 13,
-    slug: uuidv4(),
+    slug: "e31f689a-d17f-470b-b73c-47f66e3b2343",
     name: "Portable SSD 1TB",
     price: 119.0,
     category: "Electronics",
@@ -120,7 +120,7 @@ export const products = [
   },
   {
     id: 14,
-    slug: uuidv4(),
+    slug: "dbb00e48-7851-47a8-b230-81281cc4b5b1",
     name: "Smartwatch Series 5",
     price: 199.99,
     category: "Electronics",
@@ -129,7 +129,7 @@ export const products = [
   },
   {
     id: 15,
-    slug: uuidv4(),
+    slug: "d5f1f651-4828-4b19-a168-9b58cb64e9d1",
     name: "Water Bottle 1L",
     price: 14.99,
     category: "Home",
@@ -138,7 +138,7 @@ export const products = [
   },
   {
     id: 16,
-    slug: uuidv4(),
+    slug: "b4d6a342-7999-4df9-b0b3-9f2f5a7ef3e5",
     name: "Gaming Mouse Pad XL",
     price: 16.5,
     category: "Accessories",
@@ -147,7 +147,7 @@ export const products = [
   },
   {
     id: 17,
-    slug: uuidv4(),
+    slug: "b701b4ec-918b-46e5-873d-bad4d7dc8c8f",
     name: "Wireless Earbuds",
     price: 89.0,
     category: "Electronics",
@@ -156,7 +156,7 @@ export const products = [
   },
   {
     id: 18,
-    slug: uuidv4(),
+    slug: "0d1b06c1-4590-49a9-bc27-fb8fdbb548e5",
     name: "Desk Organizer Set",
     price: 29.99,
     category: "Home",
@@ -165,7 +165,7 @@ export const products = [
   },
   {
     id: 19,
-    slug: uuidv4(),
+    slug: "2f58f2c5-becb-46c4-9a0f-df0cba1f4873",
     name: "HD Webcam 1080p",
     price: 49.99,
     category: "Electronics",
@@ -174,7 +174,7 @@ export const products = [
   },
   {
     id: 20,
-    slug: uuidv4(),
+    slug: "9ab33c6f-3f4e-4d9e-b02f-6c4ed37bba4a",
     name: "Laptop Cooling Pad",
     price: 27.5,
     category: "Accessories",

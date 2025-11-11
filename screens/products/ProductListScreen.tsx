@@ -19,6 +19,7 @@ export default function ProductListScreen() {
       options: ["Electronics", "Furniture", "Home", "Accessories"],
       placeholder: "Select role",
     },
+    { key: "sku", type: "input", placeholder: "Search by SKU" },
   ];
 
   return (
@@ -29,8 +30,6 @@ export default function ProductListScreen() {
           columns={["id", "sku", "name", "price", "stock", "category"]}
           filters={filters}
           pageSize={10}
-          onView={(row) => alert(`Viewing ${(row as ProductRow).name}`)}
-          onEdit={(row) => alert(`Editing ${(row as ProductRow).name}`)}
           onDelete={(row) => alert(`Deleting ${(row as ProductRow).name}`)}
         />
       </LayoutWrapper>
