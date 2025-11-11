@@ -1,6 +1,6 @@
 import { Button } from "../ui/button";
 
-export default function Card({
+export default function AppCard({
   icon,
   title,
   description,

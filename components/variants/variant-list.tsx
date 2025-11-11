@@ -1,6 +1,10 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, PackageOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 type SubVariant = {
   color: string;
@@ -47,26 +51,18 @@ export default function VariantList({ data, onVariantsChange }: Props) {
     const num = parseFloat(value) || 0;
 
     if (sIndex === null) {
-      // parent
       newVariants[vIndex][field] = num;
       if (field === "price") {
         newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
-          (s) => ({
-            ...s,
-            price: num,
-          })
+          (s) => ({ ...s, price: num })
         );
       }
       if (field === "stock") {
         newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
-          (s) => ({
-            ...s,
-            stock: num,
-          })
+          (s) => ({ ...s, stock: num })
         );
       }
     } else {
-      // child
       const updatedSubs = newVariants[vIndex].sub_variants.map((sub, i) =>
         i === sIndex ? { ...sub, [field]: num } : sub
       );
@@ -88,15 +84,12 @@ export default function VariantList({ data, onVariantsChange }: Props) {
     const prices = variant.sub_variants.map((s) => s.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-    if (!variant.sub_variants.length) return "៛ 0.00";
+    if (!variant.sub_variants.length) return "$ 0.00";
     return min === max
-      ? `៛ ${min.toFixed(2)}`
-      : `៛ ${min.toFixed(2)} – ${max.toFixed(2)}`;
+      ? `$ ${min.toFixed(2)}`
+      : `$ ${min.toFixed(2)} – ${max.toFixed(2)}`;
   };
 
-  /** ✅ FIXED LOGIC:
-   * Only show dropdown when there are two or more unique sub-variant combos
-   */
   const hasExpandableChildren = (variant: Variant) => {
     if (!variant.sub_variants) return false;
 
@@ -108,7 +101,6 @@ export default function VariantList({ data, onVariantsChange }: Props) {
 
     if (validSubs.length === 0) return false;
 
-    // still clean up duplicates
     const uniqueCombos = new Set(
       validSubs.map(
         (s) =>
@@ -118,11 +110,11 @@ export default function VariantList({ data, onVariantsChange }: Props) {
       )
     );
 
-    return uniqueCombos.size >= 1; // ✅ dropdown for any valid sub (1 or more)
+    return uniqueCombos.size >= 1;
   };
 
   return (
-    <div className="variant-list">
+    <div className="space-y-4">
       {variants.map((variant, vIndex) => {
         const prices = variant.sub_variants.map((s) => s.price);
         const min = Math.min(...prices);
@@ -131,35 +123,43 @@ export default function VariantList({ data, onVariantsChange }: Props) {
         const expandable = hasExpandableChildren(variant);
 
         return (
-          <div key={vIndex} className="variant-group">
-            {/* Parent Row */}
+          <Card
+            key={vIndex}
+            className="p-4 border border-border/50 bg-card shadow-sm hover:shadow-md transition-shadow"
+          >
+            {/* Parent Header */}
             <div
-              className={`variant-header ${expandable ? "cursor-pointer" : ""}`}
+              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer ${
+                expandable ? "hover:bg-muted/40 rounded-md p-2" : ""
+              }`}
               onClick={() => expandable && toggleExpand(vIndex)}
             >
-              <div className="variant-main">
-                <PackageOpen className="variant-icon" />
-                <span className="variant-title">
-                  {variant.size ||
-                    variant.color ||
-                    variant.material ||
-                    "Variant"}
-                </span>
-
-                {/* ✅ hide count when only 1 */}
-                {variant.sub_variants.length > 1 && (
-                  <span className="variant-count">
-                    {variant.sub_variants.length} variants
-                  </span>
-                )}
+              {/* Left side */}
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-muted rounded-md">
+                  <PackageOpen className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <div className="font-medium text-foreground">
+                    {variant.size ||
+                      variant.color ||
+                      variant.material ||
+                      `Variant ${vIndex + 1}`}
+                  </div>
+                  {variant.sub_variants.length > 1 && (
+                    <p className="text-xs text-muted-foreground">
+                      {variant.sub_variants.length} combinations
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div className="variant-inputs">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  className="price-input"
+              {/* Right side inputs */}
+              <div className="flex items-center gap-3 sm:ml-auto">
+                <Input
+                  type="number"
                   placeholder={getPricePlaceholder(variant)}
+                  className="w-50 text-right"
                   value={
                     isRange ? "" : variant.price ? variant.price.toString() : ""
                   }
@@ -167,56 +167,58 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                     handleChange(vIndex, null, "price", e.target.value)
                   }
                 />
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  className="stock-input"
+                <Input
+                  type="number"
+                  placeholder="Stock"
+                  className="w-50 text-right"
                   value={variant.stock ? variant.stock.toString() : ""}
                   onChange={(e) =>
                     handleChange(vIndex, null, "stock", e.target.value)
                   }
                 />
-
-                {/* ✅ only show dropdown when multiple combos */}
                 {expandable &&
                   (expanded.includes(vIndex) ? (
-                    <ChevronUp className="toggle-icon" />
+                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
                   ) : (
-                    <ChevronDown className="toggle-icon" />
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   ))}
               </div>
             </div>
 
             {/* Sub Variants */}
             {expandable && expanded.includes(vIndex) && (
-              <div className="sub-variant-list">
+              <div className="mt-3 pl-9 space-y-2">
+                <Separator className="my-2" />
                 {variant.sub_variants.map((sub, sIndex) => (
-                  <div key={sIndex} className="sub-variant-row">
-                    <PackageOpen className="variant-icon" />
-                    <span className="sub-variant-title">
-                      {sub.color || sub.material
-                        ? `${sub.color || ""}${
-                            sub.color && sub.material ? " / " : ""
-                          }${sub.material || ""}`
-                        : ""}
-                    </span>
+                  <div
+                    key={sIndex}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <PackageOpen className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {sub.color || sub.material
+                          ? `${sub.color || ""}${
+                              sub.color && sub.material ? " / " : ""
+                            }${sub.material || ""}`
+                          : "Sub variant"}
+                      </span>
+                    </div>
 
-                    <div className="variant-inputs">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="price-input"
-                        placeholder="៛ 0.00"
+                    <div className="flex items-center gap-3 sm:ml-auto">
+                      <Input
+                        type="number"
+                        placeholder="$ 0.00"
+                        className="w-50 text-right"
                         value={sub.price ? sub.price.toString() : ""}
                         onChange={(e) =>
                           handleChange(vIndex, sIndex, "price", e.target.value)
                         }
                       />
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="stock-input"
+                      <Input
+                        type="number"
                         placeholder="0"
+                        className="w-50 text-right"
                         value={sub.stock ? sub.stock.toString() : ""}
                         onChange={(e) =>
                           handleChange(vIndex, sIndex, "stock", e.target.value)
@@ -227,7 +229,7 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         );
       })}
     </div>

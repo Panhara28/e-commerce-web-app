@@ -1,7 +1,13 @@
 "use client";
-import { PlusCircle, X } from "lucide-react";
+
+import { PlusCircle, X, Loader2, Save } from "lucide-react";
 import { useState, useEffect, useMemo, startTransition } from "react";
+import { v4 as uuidv4 } from "uuid";
 import VariantList from "./variant-list";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 type SubVariant = {
   color: string;
@@ -19,12 +25,25 @@ type Variant = {
   sub_variants: SubVariant[];
 };
 
+type Product = {
+  id: number;
+  slug: string;
+  name: string;
+  price: number;
+  category: string;
+  stock: number;
+  sku: string;
+  variants: Variant[];
+  created_at: string;
+};
+
 const STRUCTURE_KEY = "variant_data_v1";
-const PRODUCT_KEY = "variant_saved_items";
+const PRODUCT_KEY = "products_v1";
 
 export default function Variants() {
-  const [productName, setProductName] = useState("");
-  const [variants, setVariants] = useState<{ name: string; values: string[] }[]>([]);
+  const [variants, setVariants] = useState<
+    { name: string; values: string[] }[]
+  >([]);
   const [output, setOutput] = useState<{ variants: Variant[] }>(() => {
     try {
       const raw = localStorage.getItem(STRUCTURE_KEY);
@@ -33,12 +52,20 @@ export default function Variants() {
       return { variants: [] };
     }
   });
+
   const [isGenerating, setIsGenerating] = useState(false);
 
-  /* Helper to persist structure */
-  const persistStructure = (data: { variants: Variant[] }) => {
+  // New product input fields
+  const [productForm, setProductForm] = useState({
+    name: "",
+    price: "",
+    category: "",
+    stock: "",
+    sku: "",
+  });
+
+  const persistStructure = (data: { variants: Variant[] }) =>
     localStorage.setItem(STRUCTURE_KEY, JSON.stringify(data));
-  };
 
   const defaultVariants = ["Size", "Color", "Material"];
 
@@ -50,20 +77,17 @@ export default function Variants() {
     return "Enter option value";
   };
 
-  /* ------------------------------------------------------------- */
-  /* Manage Variant Options                                        */
-  /* ------------------------------------------------------------- */
+  // ------------------------- Manage Variant Options -------------------------
   const handleAddVariant = () => {
     if (variants.length < defaultVariants.length) {
       setVariants((prev) => [...prev, { name: "", values: [""] }]);
     }
   };
 
-  const handleDeleteVariant = (index: number) => {
+  const handleDeleteVariant = (index: number) =>
     setVariants((prev) => prev.filter((_, i) => i !== index));
-  };
 
-  const handleDeleteValue = (vIndex: number, valIndex: number) => {
+  const handleDeleteValue = (vIndex: number, valIndex: number) =>
     setVariants((prev) =>
       prev.map((v, i) => {
         if (i !== vIndex) return v;
@@ -72,32 +96,29 @@ export default function Variants() {
         return { ...v, values: newValues };
       })
     );
-  };
 
-  const handleNameChange = (index: number, newName: string) => {
+  const handleNameChange = (index: number, newName: string) =>
     setVariants((prev) =>
       prev.map((v, i) => (i === index ? { ...v, name: newName } : v))
     );
-  };
 
-  const handleValueChange = (vIndex: number, valIndex: number, newValue: string) => {
+  const handleValueChange = (
+    vIndex: number,
+    valIndex: number,
+    newValue: string
+  ) =>
     setVariants((prev) =>
       prev.map((v, i) => {
         if (i !== vIndex) return v;
         const newValues = [...v.values];
         newValues[valIndex] = newValue;
-
-        // Auto-add a blank field if the last one is filled
         const isLast = valIndex === newValues.length - 1;
         if (isLast && newValue.trim() !== "") newValues.push("");
         return { ...v, values: newValues };
       })
     );
-  };
 
-  /* ------------------------------------------------------------- */
-  /* Generate Dynamic Combinations                                 */
-  /* ------------------------------------------------------------- */
+  // ------------------------- Generate Combinations -------------------------
   const generatedOutput = useMemo(() => {
     const active = variants
       .filter((v) => v.name.trim() && v.values.some((val) => val.trim()))
@@ -109,24 +130,14 @@ export default function Variants() {
     if (active.length === 0) return { variants: [] };
 
     const combine = (arrs: string[][]) =>
-      arrs.reduce(
-        (a, b) => a.flatMap((x) => b.map((y) => [...x, y])),
-        [[]] as string[][]
-      );
+      arrs.reduce((a, b) => a.flatMap((x) => b.map((y) => [...x, y])), [
+        [],
+      ] as string[][]);
 
     const combos = combine(active.map((x) => x.values));
 
-    type Row = {
-      size?: string;
-      color?: string;
-      material?: string;
-      price: number;
-      stock: number;
-      sub_variants: SubVariant[];
-    };
-
-    const result: Row[] = combos.map((combo) => {
-      const obj: Row = { sub_variants: [], price: 0, stock: 0 };
+    const result = combos.map((combo) => {
+      const obj: Variant = { sub_variants: [], price: 0, stock: 0 };
       active.forEach((opt, i) => {
         if (opt.name.includes("size")) obj.size = combo[i];
         else if (opt.name.includes("color")) obj.color = combo[i];
@@ -138,7 +149,7 @@ export default function Variants() {
     const primaryKey =
       active.find((o) => o.name.includes("size"))?.name || active[0].name;
 
-    const getPrimaryValue = (r: Row) =>
+    const getPrimaryValue = (r: Variant) =>
       primaryKey.includes("size")
         ? r.size
         : primaryKey.includes("color")
@@ -147,7 +158,10 @@ export default function Variants() {
         ? r.material
         : undefined;
 
-    const uniquePrimary = [...new Set(result.map((r) => getPrimaryValue(r)))].filter(Boolean) as string[];
+    const uniquePrimary = [
+      ...new Set(result.map((r) => getPrimaryValue(r))),
+    ].filter(Boolean) as string[];
+
     const grouped = uniquePrimary.map((val) => {
       const children = result.filter((r) => getPrimaryValue(r) === val);
       return {
@@ -168,16 +182,17 @@ export default function Variants() {
     return { variants: grouped };
   }, [variants]);
 
-  /* ------------------------------------------------------------- */
-  /* Sync to localStorage                                          */
-  /* ------------------------------------------------------------- */
+  // ------------------------- Sync to localStorage -------------------------
   useEffect(() => {
     startTransition(() => setIsGenerating(true));
     const t = setTimeout(() => {
       setOutput((prev) => {
         const merged = generatedOutput.variants.map((v) => {
           const existing = prev.variants.find(
-            (o) => o.size === v.size && o.color === v.color && o.material === v.material
+            (o) =>
+              o.size === v.size &&
+              o.color === v.color &&
+              o.material === v.material
           );
           if (existing) {
             const mergedSubs = v.sub_variants.map((s, i) => ({
@@ -185,7 +200,12 @@ export default function Variants() {
               price: existing.sub_variants[i]?.price ?? s.price,
               stock: existing.sub_variants[i]?.stock ?? s.stock,
             }));
-            return { ...v, price: existing.price, stock: existing.stock, sub_variants: mergedSubs };
+            return {
+              ...v,
+              price: existing.price,
+              stock: existing.stock,
+              sub_variants: mergedSubs,
+            };
           }
           return v;
         });
@@ -198,132 +218,203 @@ export default function Variants() {
     return () => clearTimeout(t);
   }, [generatedOutput]);
 
-  /* ------------------------------------------------------------- */
-  /* Save Product                                                  */
-  /* ------------------------------------------------------------- */
+  // ------------------------- Save Product -------------------------
   const handleSaveProduct = () => {
-    if (!productName.trim()) {
-      alert("⚠️ Please enter a product name first!");
+    const { name, price, category, stock, sku } = productForm;
+
+    if (!name || !price || !category || !stock || !sku) {
+      alert("⚠️ Please fill all product fields!");
       return;
     }
 
-    const productData = {
-      name: productName.trim(),
+    const existingRaw = localStorage.getItem(PRODUCT_KEY);
+    const existing: Product[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+    const newProduct: Product = {
+      id: existing.length + 1,
+      slug: uuidv4(),
+      name: name.trim(),
+      price: parseFloat(price),
+      category: category.trim(),
+      stock: parseInt(stock),
+      sku: sku.trim(),
       variants: output.variants,
       created_at: new Date().toISOString(),
     };
 
-    const existingRaw = localStorage.getItem(PRODUCT_KEY);
-    const existing: typeof productData[] = existingRaw ? JSON.parse(existingRaw) : [];
+    localStorage.setItem(
+      PRODUCT_KEY,
+      JSON.stringify([...existing, newProduct])
+    );
 
-    // Add new product
-    const updated = [...existing, productData];
-    localStorage.setItem(PRODUCT_KEY, JSON.stringify(updated));
-
-    alert(`✅ "${productName}" saved successfully!`);
-    setProductName("");
+    alert(`✅ Product "${name}" saved successfully!`);
+    setProductForm({ name: "", price: "", category: "", stock: "", sku: "" });
   };
 
-  /* ------------------------------------------------------------- */
-  /* Render UI                                                     */
-  /* ------------------------------------------------------------- */
+  // ------------------------- Render UI -------------------------
   return (
-    <div className="variant-card">
-      {/* Product Name Input */}
-      <div style={{ marginBottom: "16px" }}>
-        <label className="variant-label">Product Name</label>
-        <input
-          type="text"
-          placeholder="Enter product name"
-          value={productName}
-          onChange={(e) => setProductName(e.target.value)}
-          className="variant-input"
-        />
+    <Card className="p-6 space-y-6 border border-border/60 bg-card shadow-sm">
+      {/* 🧩 Product Info Section */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Product Information</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            placeholder="Product Name"
+            value={productForm.name}
+            onChange={(e) =>
+              setProductForm((p) => ({ ...p, name: e.target.value }))
+            }
+          />
+          <Input
+            type="number"
+            placeholder="Price ($)"
+            value={productForm.price}
+            onChange={(e) =>
+              setProductForm((p) => ({ ...p, price: e.target.value }))
+            }
+          />
+          <Input
+            placeholder="Category (e.g., Electronics)"
+            value={productForm.category}
+            onChange={(e) =>
+              setProductForm((p) => ({ ...p, category: e.target.value }))
+            }
+          />
+          <Input
+            type="number"
+            placeholder="Stock"
+            value={productForm.stock}
+            onChange={(e) =>
+              setProductForm((p) => ({ ...p, stock: e.target.value }))
+            }
+          />
+          <Input
+            placeholder="SKU (e.g., ELEC-1001)"
+            value={productForm.sku}
+            onChange={(e) =>
+              setProductForm((p) => ({ ...p, sku: e.target.value }))
+            }
+          />
+        </div>
       </div>
 
-      <h3 className="variant-title">Variants</h3>
+      <Separator />
 
-      {variants.length === 0 ? (
-        <div className="variant-add" onClick={handleAddVariant}>
-          <PlusCircle className="variant-icon" />
-          <span>Add options like size or color</span>
-        </div>
-      ) : (
-        <>
-          {variants.map((variant, i) => (
-            <div key={i} className="variant-box">
-              <label className="variant-label">Option name</label>
-              <input
-                type="text"
-                placeholder={defaultVariants[i] || "Option name"}
-                value={variant.name}
-                onChange={(e) => handleNameChange(i, e.target.value)}
-                className="variant-input"
-              />
-              <label className="variant-label">Option values</label>
-              {variant.values.map((val, j) => (
-                <div key={j} className="variant-value-row">
-                  <input
-                    type="text"
-                    placeholder={getPlaceholder(variant.name || defaultVariants[i])}
-                    value={val}
-                    onChange={(e) => handleValueChange(i, j, e.target.value)}
-                    className="variant-input"
-                  />
-                  {val.trim() && (
-                    <button
-                      className="variant-value-delete"
-                      onClick={() => handleDeleteValue(i, j)}
-                      type="button"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
+      {/* Variant Builder Section */}
+      <div>
+        <h3 className="text-base font-semibold mb-2">Variants</h3>
+
+        {variants.length === 0 ? (
+          <Button
+            variant="outline"
+            onClick={handleAddVariant}
+            className="flex items-center gap-2"
+          >
+            <PlusCircle className="w-4 h-4" /> Add options like size or color
+          </Button>
+        ) : (
+          <div className="space-y-6">
+            {variants.map((variant, i) => (
+              <Card
+                key={i}
+                className="p-4 border border-border/40 bg-muted/30 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">Option {i + 1}</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => handleDeleteVariant(i)}
+                  >
+                    Delete
+                  </Button>
                 </div>
-              ))}
-              <div className="variant-actions">
-                <button className="variant-delete" onClick={() => handleDeleteVariant(i)}>
-                  Delete Option
-                </button>
-              </div>
-            </div>
-          ))}
 
-          {variants.length < defaultVariants.length && (
-            <div className="variant-add" onClick={handleAddVariant}>
-              <PlusCircle className="variant-icon" />
-              <span>Add another option</span>
-            </div>
-          )}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Option name
+                    </label>
+                    <Input
+                      placeholder={defaultVariants[i] || "Option name"}
+                      value={variant.name}
+                      onChange={(e) => handleNameChange(i, e.target.value)}
+                    />
+                  </div>
 
-          {isGenerating && (
-            <div style={{ marginTop: 8, fontSize: 13, color: "#6b7280", fontStyle: "italic" }}>
-              Generating variants…
-            </div>
-          )}
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Option values
+                    </label>
+                    <div className="space-y-2">
+                      {variant.values.map((val, j) => (
+                        <div key={j} className="flex items-center gap-2">
+                          <Input
+                            placeholder={getPlaceholder(
+                              variant.name || defaultVariants[i]
+                            )}
+                            value={val}
+                            onChange={(e) =>
+                              handleValueChange(i, j, e.target.value)
+                            }
+                          />
+                          {val.trim() && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteValue(i, j)}
+                            >
+                              <X className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
 
-          {!isGenerating && output.variants.length > 0 && (
-            <>
-              <VariantList
-                data={output}
-                onVariantsChange={(updated) => {
-                  const newData = { variants: updated };
-                  setOutput(newData);
-                  persistStructure(newData);
-                }}
-              />
+            {variants.length < defaultVariants.length && (
+              <Button
+                variant="outline"
+                onClick={handleAddVariant}
+                className="flex items-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" /> Add another option
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
-         
-            </>
-          )}
-               {/* Save Product Button */}
-              <div className="variant-actions" style={{ marginTop: "16px" }}>
-                <button className="variant-done" onClick={handleSaveProduct}>
-                  💾 Save Product
-                </button>
-              </div>
-        </>
+      {/* Variant Combination List */}
+      {isGenerating && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" /> Generating variants…
+        </div>
       )}
-    </div>
+
+      {!isGenerating && output.variants.length > 0 && (
+        <VariantList
+          data={output}
+          onVariantsChange={(updated) => {
+            const newData = { variants: updated };
+            setOutput(newData);
+            persistStructure(newData);
+          }}
+        />
+      )}
+
+      <Separator />
+
+      {/* Save Product */}
+      <div className="pt-4">
+        <Button onClick={handleSaveProduct} className="flex items-center gap-2">
+          <Save className="w-4 h-4" /> Save Product
+        </Button>
+      </div>
+    </Card>
   );
 }

@@ -1,29 +1,32 @@
-export default function NavItem({
-  icon,
-  label,
-  badge,
-  active = false,
-}: {
-  icon: React.ReactNode;
+"use client";
+
+import Link from "next/link";
+import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+
+type NavItemProps = {
+  icon?: ReactNode;
   label: string;
-  badge?: string;
-  active?: boolean;
-}) {
+  href?: string;
+};
+
+export default function NavItem({ icon, label, href = "#" }: NavItemProps) {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
   return (
-    <button
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-        active
-          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-          : "text-sidebar-foreground hover:bg-sidebar-accent"
-      }`}
-    >
-      {icon}
-      <span className="font-medium text-sm">{label}</span>
-      {badge && (
-        <span className="ml-auto text-xs bg-sidebar-accent-foreground text-sidebar-accent px-2 py-1 rounded">
-          {badge}
-        </span>
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+        isActive
+          ? "bg-sidebar-primary text-white font-medium"
+          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
       )}
-    </button>
+    >
+      {icon && <span className="text-muted-foreground">{icon}</span>}
+      <span>{label}</span>
+    </Link>
   );
 }
