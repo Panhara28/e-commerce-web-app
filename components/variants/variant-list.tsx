@@ -41,6 +41,14 @@ export default function VariantList({ data, onVariantsChange }: Props) {
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
 
+  // 🔧 Determine if a variant has “real” sub-variants (with color/material)
+  const hasRealSubVariants = (variant: Variant): boolean => {
+    if (!variant.sub_variants?.length) return false;
+    return variant.sub_variants.some(
+      (s) => s.color.trim() !== "" || s.material.trim() !== ""
+    );
+  };
+
   const handleChange = (
     vIndex: number,
     sIndex: number | null,
@@ -49,30 +57,41 @@ export default function VariantList({ data, onVariantsChange }: Props) {
   ) => {
     const newVariants = [...variants];
     const num = parseFloat(value) || 0;
+    const variant = newVariants[vIndex];
+    const realSubs = hasRealSubVariants(variant);
 
-    if (sIndex === null) {
-      newVariants[vIndex][field] = num;
-      if (field === "price") {
+    // ✅ Case 1: No sub-variants (update parent only)
+    if (!realSubs) {
+      if (sIndex === null) {
+        newVariants[vIndex][field] = num;
+        // Keep sub_variants (dummy entry) in sync visually
         newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
-          (s) => ({ ...s, price: num })
+          (s) => ({ ...s, [field]: num })
         );
       }
-      if (field === "stock") {
-        newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
-          (s) => ({ ...s, stock: num })
-        );
-      }
-    } else {
-      const updatedSubs = newVariants[vIndex].sub_variants.map((sub, i) =>
-        i === sIndex ? { ...sub, [field]: num } : sub
-      );
-      newVariants[vIndex].sub_variants = updatedSubs;
+    }
 
-      if (field === "price") {
-        const prices = updatedSubs.map((s) => s.price);
-        const min = Math.min(...prices);
-        const max = Math.max(...prices);
-        newVariants[vIndex].price = min === max ? min : 0;
+    // ✅ Case 2: With real sub-variants
+    else {
+      if (sIndex === null) {
+        // Editing parent → propagate to all subs
+        newVariants[vIndex][field] = num;
+        newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
+          (s) => ({ ...s, [field]: num })
+        );
+      } else {
+        // Editing specific sub-variant
+        const updatedSubs = newVariants[vIndex].sub_variants.map((sub, i) =>
+          i === sIndex ? { ...sub, [field]: num } : sub
+        );
+        newVariants[vIndex].sub_variants = updatedSubs;
+
+        if (field === "price") {
+          const prices = updatedSubs.map((s) => s.price);
+          const min = Math.min(...prices);
+          const max = Math.max(...prices);
+          newVariants[vIndex].price = min === max ? min : 0;
+        }
       }
     }
 
@@ -91,16 +110,12 @@ export default function VariantList({ data, onVariantsChange }: Props) {
   };
 
   const hasExpandableChildren = (variant: Variant) => {
-    if (!variant.sub_variants) return false;
-
     const validSubs = variant.sub_variants.filter(
       (s) =>
         (s.color && s.color.trim().length > 0) ||
         (s.material && s.material.trim().length > 0)
     );
-
     if (validSubs.length === 0) return false;
-
     const uniqueCombos = new Set(
       validSubs.map(
         (s) =>
@@ -109,7 +124,6 @@ export default function VariantList({ data, onVariantsChange }: Props) {
           }`
       )
     );
-
     return uniqueCombos.size >= 1;
   };
 
@@ -121,6 +135,7 @@ export default function VariantList({ data, onVariantsChange }: Props) {
         const max = Math.max(...prices);
         const isRange = min !== max;
         const expandable = hasExpandableChildren(variant);
+        const realSubs = hasRealSubVariants(variant);
 
         return (
           <Card
@@ -129,8 +144,8 @@ export default function VariantList({ data, onVariantsChange }: Props) {
           >
             {/* Parent Header */}
             <div
-              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer ${
-                expandable ? "hover:bg-muted/40 rounded-md p-2" : ""
+              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${
+                expandable ? "hover:bg-muted/40 rounded-md p-2 cursor-pointer" : ""
               }`}
               onClick={() => expandable && toggleExpand(vIndex)}
             >
@@ -186,7 +201,7 @@ export default function VariantList({ data, onVariantsChange }: Props) {
             </div>
 
             {/* Sub Variants */}
-            {expandable && expanded.includes(vIndex) && (
+            {expandable && expanded.includes(vIndex) && realSubs && (
               <div className="mt-3 pl-9 space-y-2">
                 <Separator className="my-2" />
                 {variant.sub_variants.map((sub, sIndex) => (

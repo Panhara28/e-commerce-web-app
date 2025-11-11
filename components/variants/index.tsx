@@ -8,7 +8,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 
+// --------------------- Types ---------------------
 type SubVariant = {
   color: string;
   material: string;
@@ -28,11 +30,14 @@ type Variant = {
 type Product = {
   id: number;
   slug: string;
-  name: string;
+  title: string;
+  description: { text: string };
+  categoryId: number;
+  type: string;
+  vendor: string;
   price: number;
-  category: string;
-  stock: number;
-  sku: string;
+  compareAtPrice: number;
+  costPerItem: number;
   variants: Variant[];
   created_at: string;
 };
@@ -40,10 +45,9 @@ type Product = {
 const STRUCTURE_KEY = "variant_data_v1";
 const PRODUCT_KEY = "products_v1";
 
+// --------------------- Component ---------------------
 export default function Variants() {
-  const [variants, setVariants] = useState<
-    { name: string; values: string[] }[]
-  >([]);
+  const [variants, setVariants] = useState<{ name: string; values: string[] }[]>([]);
   const [output, setOutput] = useState<{ variants: Variant[] }>(() => {
     try {
       const raw = localStorage.getItem(STRUCTURE_KEY);
@@ -55,13 +59,16 @@ export default function Variants() {
 
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // New product input fields
+  // ✅ Product fields
   const [productForm, setProductForm] = useState({
-    name: "",
+    title: "",
+    description: "",
+    categoryId: "",
+    type: "",
+    vendor: "",
     price: "",
-    category: "",
-    stock: "",
-    sku: "",
+    compareAtPrice: "",
+    costPerItem: "",
   });
 
   const persistStructure = (data: { variants: Variant[] }) =>
@@ -102,11 +109,7 @@ export default function Variants() {
       prev.map((v, i) => (i === index ? { ...v, name: newName } : v))
     );
 
-  const handleValueChange = (
-    vIndex: number,
-    valIndex: number,
-    newValue: string
-  ) =>
+  const handleValueChange = (vIndex: number, valIndex: number, newValue: string) =>
     setVariants((prev) =>
       prev.map((v, i) => {
         if (i !== vIndex) return v;
@@ -118,7 +121,7 @@ export default function Variants() {
       })
     );
 
-  // ------------------------- Generate Combinations -------------------------
+  // ------------------------- Generate Variants -------------------------
   const generatedOutput = useMemo(() => {
     const active = variants
       .filter((v) => v.name.trim() && v.values.some((val) => val.trim()))
@@ -130,9 +133,7 @@ export default function Variants() {
     if (active.length === 0) return { variants: [] };
 
     const combine = (arrs: string[][]) =>
-      arrs.reduce((a, b) => a.flatMap((x) => b.map((y) => [...x, y])), [
-        [],
-      ] as string[][]);
+      arrs.reduce((a, b) => a.flatMap((x) => b.map((y) => [...x, y])), [[]] as string[][]);
 
     const combos = combine(active.map((x) => x.values));
 
@@ -146,8 +147,7 @@ export default function Variants() {
       return obj;
     });
 
-    const primaryKey =
-      active.find((o) => o.name.includes("size"))?.name || active[0].name;
+    const primaryKey = active.find((o) => o.name.includes("size"))?.name || active[0].name;
 
     const getPrimaryValue = (r: Variant) =>
       primaryKey.includes("size")
@@ -158,9 +158,7 @@ export default function Variants() {
         ? r.material
         : undefined;
 
-    const uniquePrimary = [
-      ...new Set(result.map((r) => getPrimaryValue(r))),
-    ].filter(Boolean) as string[];
+    const uniquePrimary = [...new Set(result.map((r) => getPrimaryValue(r)))].filter(Boolean) as string[];
 
     const grouped = uniquePrimary.map((val) => {
       const children = result.filter((r) => getPrimaryValue(r) === val);
@@ -189,10 +187,7 @@ export default function Variants() {
       setOutput((prev) => {
         const merged = generatedOutput.variants.map((v) => {
           const existing = prev.variants.find(
-            (o) =>
-              o.size === v.size &&
-              o.color === v.color &&
-              o.material === v.material
+            (o) => o.size === v.size && o.color === v.color && o.material === v.material
           );
           if (existing) {
             const mergedSubs = v.sub_variants.map((s, i) => ({
@@ -220,10 +215,10 @@ export default function Variants() {
 
   // ------------------------- Save Product -------------------------
   const handleSaveProduct = () => {
-    const { name, price, category, stock, sku } = productForm;
+    const { title, price, categoryId, vendor } = productForm;
 
-    if (!name || !price || !category || !stock || !sku) {
-      alert("⚠️ Please fill all product fields!");
+    if (!title || !price || !categoryId || !vendor) {
+      alert("⚠️ Please fill all required product fields!");
       return;
     }
 
@@ -233,22 +228,31 @@ export default function Variants() {
     const newProduct: Product = {
       id: existing.length + 1,
       slug: uuidv4(),
-      name: name.trim(),
-      price: parseFloat(price),
-      category: category.trim(),
-      stock: parseInt(stock),
-      sku: sku.trim(),
+      title: title.trim(),
+      description: { text: productForm.description.trim() },
+      categoryId: parseInt(productForm.categoryId),
+      type: productForm.type || "Standard",
+      vendor: productForm.vendor.trim(),
+      price: parseFloat(productForm.price),
+      compareAtPrice: parseFloat(productForm.compareAtPrice) || 0,
+      costPerItem: parseFloat(productForm.costPerItem) || 0,
       variants: output.variants,
       created_at: new Date().toISOString(),
     };
 
-    localStorage.setItem(
-      PRODUCT_KEY,
-      JSON.stringify([...existing, newProduct])
-    );
+    localStorage.setItem(PRODUCT_KEY, JSON.stringify([...existing, newProduct]));
 
-    alert(`✅ Product "${name}" saved successfully!`);
-    setProductForm({ name: "", price: "", category: "", stock: "", sku: "" });
+    alert(`✅ Product "${title}" saved successfully!`);
+    setProductForm({
+      title: "",
+      description: "",
+      categoryId: "",
+      type: "",
+      vendor: "",
+      price: "",
+      compareAtPrice: "",
+      costPerItem: "",
+    });
   };
 
   // ------------------------- Render UI -------------------------
@@ -258,130 +262,53 @@ export default function Variants() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Product Information</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            placeholder="Product Name"
-            value={productForm.name}
-            onChange={(e) =>
-              setProductForm((p) => ({ ...p, name: e.target.value }))
-            }
-          />
-          <Input
-            type="number"
-            placeholder="Price ($)"
-            value={productForm.price}
-            onChange={(e) =>
-              setProductForm((p) => ({ ...p, price: e.target.value }))
-            }
-          />
-          <Input
-            placeholder="Category (e.g., Electronics)"
-            value={productForm.category}
-            onChange={(e) =>
-              setProductForm((p) => ({ ...p, category: e.target.value }))
-            }
-          />
-          <Input
-            type="number"
-            placeholder="Stock"
-            value={productForm.stock}
-            onChange={(e) =>
-              setProductForm((p) => ({ ...p, stock: e.target.value }))
-            }
-          />
-          <Input
-            placeholder="SKU (e.g., ELEC-1001)"
-            value={productForm.sku}
-            onChange={(e) =>
-              setProductForm((p) => ({ ...p, sku: e.target.value }))
-            }
-          />
+          <Input placeholder="Title" value={productForm.title} onChange={(e) => setProductForm((p) => ({ ...p, title: e.target.value }))} />
+          <Input placeholder="Vendor" value={productForm.vendor} onChange={(e) => setProductForm((p) => ({ ...p, vendor: e.target.value }))} />
+          <Input placeholder="Type (e.g., Gadget)" value={productForm.type} onChange={(e) => setProductForm((p) => ({ ...p, type: e.target.value }))} />
+          <Input placeholder="Category ID" value={productForm.categoryId} onChange={(e) => setProductForm((p) => ({ ...p, categoryId: e.target.value }))} />
+          <Input type="number" placeholder="Price ($)" value={productForm.price} onChange={(e) => setProductForm((p) => ({ ...p, price: e.target.value }))} />
+          <Input type="number" placeholder="Compare At Price ($)" value={productForm.compareAtPrice} onChange={(e) => setProductForm((p) => ({ ...p, compareAtPrice: e.target.value }))} />
+          <Input type="number" placeholder="Cost Per Item ($)" value={productForm.costPerItem} onChange={(e) => setProductForm((p) => ({ ...p, costPerItem: e.target.value }))} />
         </div>
+        <Textarea placeholder="Product Description" value={productForm.description} onChange={(e) => setProductForm((p) => ({ ...p, description: e.target.value }))} />
       </div>
 
       <Separator />
 
-      {/* Variant Builder Section */}
+      {/* 🧩 Variant Builder Section */}
       <div>
         <h3 className="text-base font-semibold mb-2">Variants</h3>
-
         {variants.length === 0 ? (
-          <Button
-            variant="outline"
-            onClick={handleAddVariant}
-            className="flex items-center gap-2"
-          >
+          <Button variant="outline" onClick={handleAddVariant} className="flex items-center gap-2">
             <PlusCircle className="w-4 h-4" /> Add options like size or color
           </Button>
         ) : (
           <div className="space-y-6">
             {variants.map((variant, i) => (
-              <Card
-                key={i}
-                className="p-4 border border-border/40 bg-muted/30 space-y-3"
-              >
+              <Card key={i} className="p-4 border border-border/40 bg-muted/30 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">Option {i + 1}</h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => handleDeleteVariant(i)}
-                  >
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteVariant(i)}>
                     Delete
                   </Button>
                 </div>
-
                 <div className="space-y-3">
-                  <div>
-                    <label className="text-sm text-muted-foreground">
-                      Option name
-                    </label>
-                    <Input
-                      placeholder={defaultVariants[i] || "Option name"}
-                      value={variant.name}
-                      onChange={(e) => handleNameChange(i, e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-muted-foreground">
-                      Option values
-                    </label>
-                    <div className="space-y-2">
-                      {variant.values.map((val, j) => (
-                        <div key={j} className="flex items-center gap-2">
-                          <Input
-                            placeholder={getPlaceholder(
-                              variant.name || defaultVariants[i]
-                            )}
-                            value={val}
-                            onChange={(e) =>
-                              handleValueChange(i, j, e.target.value)
-                            }
-                          />
-                          {val.trim() && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteValue(i, j)}
-                            >
-                              <X className="w-4 h-4 text-muted-foreground" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
+                  <Input placeholder={defaultVariants[i] || "Option name"} value={variant.name} onChange={(e) => handleNameChange(i, e.target.value)} />
+                  {variant.values.map((val, j) => (
+                    <div key={j} className="flex items-center gap-2">
+                      <Input placeholder={getPlaceholder(variant.name || defaultVariants[i])} value={val} onChange={(e) => handleValueChange(i, j, e.target.value)} />
+                      {val.trim() && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteValue(i, j)}>
+                          <X className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      )}
                     </div>
-                  </div>
+                  ))}
                 </div>
               </Card>
             ))}
-
             {variants.length < defaultVariants.length && (
-              <Button
-                variant="outline"
-                onClick={handleAddVariant}
-                className="flex items-center gap-2"
-              >
+              <Button variant="outline" onClick={handleAddVariant} className="flex items-center gap-2">
                 <PlusCircle className="w-4 h-4" /> Add another option
               </Button>
             )}
@@ -389,13 +316,8 @@ export default function Variants() {
         )}
       </div>
 
-      {/* Variant Combination List */}
-      {isGenerating && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" /> Generating variants…
-        </div>
-      )}
-
+      {/* 🧩 Variant Combination List */}
+      {isGenerating && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Generating variants…</div>}
       {!isGenerating && output.variants.length > 0 && (
         <VariantList
           data={output}
@@ -409,7 +331,7 @@ export default function Variants() {
 
       <Separator />
 
-      {/* Save Product */}
+      {/* 🧩 Save Product */}
       <div className="pt-4">
         <Button onClick={handleSaveProduct} className="flex items-center gap-2">
           <Save className="w-4 h-4" /> Save Product
