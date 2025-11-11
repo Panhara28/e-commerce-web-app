@@ -213,47 +213,71 @@ export default function Variants() {
     return () => clearTimeout(t);
   }, [generatedOutput]);
 
-  // ------------------------- Save Product -------------------------
-  const handleSaveProduct = () => {
-    const { title, price, categoryId, vendor } = productForm;
+// ------------------------- Save Product (Connected to API) -------------------------
+const handleSaveProduct = async () => {
+  const { title, price, categoryId, vendor } = productForm;
 
-    if (!title || !price || !categoryId || !vendor) {
-      alert("⚠️ Please fill all required product fields!");
-      return;
-    }
+  if (!title || !price || !categoryId || !vendor) {
+    alert("⚠️ Please fill all required product fields!");
+    return;
+  }
 
-    const existingRaw = localStorage.getItem(PRODUCT_KEY);
-    const existing: Product[] = existingRaw ? JSON.parse(existingRaw) : [];
-
-    const newProduct: Product = {
-      id: existing.length + 1,
-      slug: uuidv4(),
-      title: title.trim(),
-      description: { text: productForm.description.trim() },
-      categoryId: parseInt(productForm.categoryId),
-      type: productForm.type || "Standard",
-      vendor: productForm.vendor.trim(),
-      price: parseFloat(productForm.price),
-      compareAtPrice: parseFloat(productForm.compareAtPrice) || 0,
-      costPerItem: parseFloat(productForm.costPerItem) || 0,
-      variants: output.variants,
-      created_at: new Date().toISOString(),
-    };
-
-    localStorage.setItem(PRODUCT_KEY, JSON.stringify([...existing, newProduct]));
-
-    alert(`✅ Product "${title}" saved successfully!`);
-    setProductForm({
-      title: "",
-      description: "",
-      categoryId: "",
-      type: "",
-      vendor: "",
-      price: "",
-      compareAtPrice: "",
-      costPerItem: "",
-    });
+  // ✅ Build product payload
+  const productPayload = {
+    title: productForm.title.trim(),
+    description: { text: productForm.description.trim() },
+    categoryId: parseInt(productForm.categoryId),
+    type: productForm.type || "Standard",
+    vendor: productForm.vendor.trim(),
+    price: parseFloat(productForm.price),
+    compareAtPrice: parseFloat(productForm.compareAtPrice) || 0,
+    costPerItem: parseFloat(productForm.costPerItem) || 0,
+    variants: output.variants,
+    mediaUrls: [], // Optional: later connect your image uploader here
   };
+
+  try {
+    // ✅ Call your API
+    const response = await fetch("/api/products/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(productPayload),
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.status === "ok") {
+      alert(`✅ ${data.message}`);
+
+      // Optional: store locally for cache/history
+      const existingRaw = localStorage.getItem(PRODUCT_KEY);
+      const existing: Product[] = existingRaw ? JSON.parse(existingRaw) : [];
+      localStorage.setItem(PRODUCT_KEY, JSON.stringify([...existing, data.data]));
+
+      // Reset form + variant data
+      setProductForm({
+        title: "",
+        description: "",
+        categoryId: "",
+        type: "",
+        vendor: "",
+        price: "",
+        compareAtPrice: "",
+        costPerItem: "",
+      });
+      localStorage.removeItem(STRUCTURE_KEY);
+      setOutput({ variants: [] });
+      setVariants([]);
+
+    } else {
+      console.error("❌ API Error:", data);
+      alert(data.message || "Failed to create product!");
+    }
+  } catch (error) {
+    console.error("❌ Request Error:", error);
+    alert("Network error while creating product!");
+  }
+};
 
   // ------------------------- Render UI -------------------------
   return (
