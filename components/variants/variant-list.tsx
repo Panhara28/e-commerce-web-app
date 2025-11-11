@@ -11,6 +11,8 @@ type SubVariant = {
   material: string;
   price: number;
   stock: number;
+  sku?: string;
+  imageVariant?: string;
 };
 
 type Variant = {
@@ -19,6 +21,8 @@ type Variant = {
   material?: string;
   price: number;
   stock: number;
+  sku?: string;
+  imageVariant?: string;
   sub_variants: SubVariant[];
 };
 
@@ -41,7 +45,6 @@ export default function VariantList({ data, onVariantsChange }: Props) {
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
 
-  // 🔧 Determine if a variant has “real” sub-variants (with color/material)
   const hasRealSubVariants = (variant: Variant): boolean => {
     if (!variant.sub_variants?.length) return false;
     return variant.sub_variants.some(
@@ -52,37 +55,41 @@ export default function VariantList({ data, onVariantsChange }: Props) {
   const handleChange = (
     vIndex: number,
     sIndex: number | null,
-    field: "price" | "stock",
+    field: keyof Variant | keyof SubVariant,
     value: string
   ) => {
     const newVariants = [...variants];
-    const num = parseFloat(value) || 0;
     const variant = newVariants[vIndex];
     const realSubs = hasRealSubVariants(variant);
+
+    // Numeric fields
+    const isNumber = field === "price" || field === "stock";
+    const parsed = isNumber ? parseFloat(value) || 0 : value;
 
     // ✅ Case 1: No sub-variants (update parent only)
     if (!realSubs) {
       if (sIndex === null) {
-        newVariants[vIndex][field] = num;
-        // Keep sub_variants (dummy entry) in sync visually
+        (newVariants[vIndex] as any)[field] = parsed;
         newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
-          (s) => ({ ...s, [field]: num })
+          (s) => ({ ...s, [field]: parsed })
         );
       }
     }
 
-    // ✅ Case 2: With real sub-variants
+    // ✅ Case 2: With sub-variants
     else {
       if (sIndex === null) {
-        // Editing parent → propagate to all subs
-        newVariants[vIndex][field] = num;
-        newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
-          (s) => ({ ...s, [field]: num })
-        );
+        // Editing parent → propagate to all subs for numeric fields
+        (newVariants[vIndex] as any)[field] = parsed;
+        if (isNumber) {
+          newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
+            (s) => ({ ...s, [field]: parsed })
+          );
+        }
       } else {
         // Editing specific sub-variant
         const updatedSubs = newVariants[vIndex].sub_variants.map((sub, i) =>
-          i === sIndex ? { ...sub, [field]: num } : sub
+          i === sIndex ? { ...sub, [field]: parsed } : sub
         );
         newVariants[vIndex].sub_variants = updatedSubs;
 
@@ -170,11 +177,11 @@ export default function VariantList({ data, onVariantsChange }: Props) {
               </div>
 
               {/* Right side inputs */}
-              <div className="flex items-center gap-3 sm:ml-auto">
+              <div className="flex flex-col sm:flex-row gap-3 sm:ml-auto w-full sm:w-auto">
                 <Input
                   type="number"
                   placeholder={getPricePlaceholder(variant)}
-                  className="w-50 text-right"
+                  className="text-right"
                   value={
                     isRange ? "" : variant.price ? variant.price.toString() : ""
                   }
@@ -185,17 +192,31 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                 <Input
                   type="number"
                   placeholder="Stock"
-                  className="w-50 text-right"
+                  className="text-right"
                   value={variant.stock ? variant.stock.toString() : ""}
                   onChange={(e) =>
                     handleChange(vIndex, null, "stock", e.target.value)
                   }
                 />
+                <Input
+                  placeholder="SKU (e.g., ELEC-9991)"
+                  value={variant.sku ?? ""}
+                  onChange={(e) =>
+                    handleChange(vIndex, null, "sku", e.target.value)
+                  }
+                />
+                <Input
+                  placeholder="Image (e.g., mouse-black.png)"
+                  value={variant.imageVariant ?? ""}
+                  onChange={(e) =>
+                    handleChange(vIndex, null, "imageVariant", e.target.value)
+                  }
+                />
                 {expandable &&
                   (expanded.includes(vIndex) ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    <ChevronUp className="w-4 h-4 text-muted-foreground self-center" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    <ChevronDown className="w-4 h-4 text-muted-foreground self-center" />
                   ))}
               </div>
             </div>
@@ -220,11 +241,11 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 sm:ml-auto">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:ml-auto w-full sm:w-auto">
                       <Input
                         type="number"
                         placeholder="$ 0.00"
-                        className="w-50 text-right"
+                        className="text-right"
                         value={sub.price ? sub.price.toString() : ""}
                         onChange={(e) =>
                           handleChange(vIndex, sIndex, "price", e.target.value)
@@ -233,10 +254,24 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                       <Input
                         type="number"
                         placeholder="0"
-                        className="w-50 text-right"
+                        className="text-right"
                         value={sub.stock ? sub.stock.toString() : ""}
                         onChange={(e) =>
                           handleChange(vIndex, sIndex, "stock", e.target.value)
+                        }
+                      />
+                      <Input
+                        placeholder="SKU (e.g., ELEC-9991)"
+                        value={sub.sku ?? ""}
+                        onChange={(e) =>
+                          handleChange(vIndex, sIndex, "sku", e.target.value)
+                        }
+                      />
+                      <Input
+                        placeholder="Image (e.g., mouse-black.png)"
+                        value={sub.imageVariant ?? ""}
+                        onChange={(e) =>
+                          handleChange(vIndex, sIndex, "imageVariant", e.target.value)
                         }
                       />
                     </div>
