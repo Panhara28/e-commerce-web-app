@@ -457,81 +457,90 @@ export default function Variants() {
                 <h6 className="text-sm py-1">Media</h6>
                 <MediaUpload />
               </div>
-              <div className="px-5">
-                <h6 className="text-sm py-1">Category</h6>
-                <Select>
-                  <SelectTrigger className="w-[100%] shadow-none border border-black">
-                    <SelectValue placeholder="Select a fruit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Fruits</SelectLabel>
-                      <SelectItem value="apple">Apple</SelectItem>
-                      <SelectItem value="banana">Banana</SelectItem>
-                      <SelectItem value="blueberry">Blueberry</SelectItem>
-                      <SelectItem value="grapes">Grapes</SelectItem>
-                      <SelectItem value="pineapple">Pineapple</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-wrap">
+                <div className="px-5 w-1/2">
+                  <h6 className="text-sm py-1">Category</h6>
+                  <Select>
+                    <SelectTrigger className="w-[100%] shadow-none border border-black">
+                      <SelectValue placeholder="Select a fruit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Fruits</SelectLabel>
+                        <SelectItem value="apple">Apple</SelectItem>
+                        <SelectItem value="banana">Banana</SelectItem>
+                        <SelectItem value="blueberry">Blueberry</SelectItem>
+                        <SelectItem value="grapes">Grapes</SelectItem>
+                        <SelectItem value="pineapple">Pineapple</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="px-5 w-1/2">
+                  <h6 className="text-sm py-1">Product code</h6>
+                  <Input
+                    className="shadow-none border border-black"
+                    type="text"
+                    placeholder="Short sleeve t-shirt"
+                  />
+                </div>
               </div>
             </Card>
             <Card className="shadow-none border rounded-lg my-3">
-              <div className="px-5">
-                <h6 className="text-sm py-1">Price</h6>
-                <Input
-                  className="shadow-none border border-black"
-                  type="number"
-                  placeholder="$ 0.00"
-                />
-              </div>
-              <CardFooter className="flex gap-3 px-5">
-                <Button onClick={toggleAdditional}>Compare at</Button>
-                <Button onClick={toggleAdditional}>Unit price</Button>
-                <Button onClick={toggleAdditional}>Cost per item</Button>
-              </CardFooter>
-              <div
-                className="flex justify-between items-center border-t py-2 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={toggleAdditional}
-              >
-                <div className="px-5 text-sm font-semibold">
-                  Additional display prices
+              <div className="flex flex-wrap">
+                <div className="px-5 w-1/2 mb-4">
+                  <h6 className="text-sm py-1">Price</h6>
+                  <Input
+                    className="shadow-none border border-black"
+                    type="number"
+                    placeholder="$ 0.00"
+                  />
                 </div>
-                <div className="px-5">
-                  {showAdditional ? (
-                    <ChevronUp strokeWidth={3} width={15} height={15} />
-                  ) : (
-                    <ChevronDown strokeWidth={3} width={15} height={15} />
-                  )}
+                <div className="px-5 w-1/2">
+                  <h6 className="text-sm py-1">Discount</h6>
+                  <Input
+                    className="shadow-none border border-black"
+                    type="number"
+                    placeholder="$ 0.00"
+                  />
                 </div>
-              </div>
 
-              {/* Collapsible Section */}
-              {showAdditional && (
-                <div className="animate-in fade-in-10 slide-in-from-top-2 duration-200">
-                  <div className="flex">
-                    <div className="px-5 w-1/2">
-                      <h6 className="text-sm py-1 font-medium">
-                        Compare-at price
-                      </h6>
-                      <Input
-                        className="shadow-none border border-black"
-                        type="text"
-                        placeholder="$ 0.00"
-                      />
-                    </div>
-                    <div className="px-5 w-1/2">
-                      <h6 className="text-sm py-1 font-medium">Unit price</h6>
-                      <Input
-                        className="shadow-none border border-black"
-                        type="text"
-                        placeholder="$ 0.00"
-                      />
-                    </div>
-                  </div>
+                <div className="px-5 w-1/2  mb-4">
+                  <h6 className="text-sm py-1">Sale Price For Hold Sale ($)</h6>
+                  <Input
+                    className="shadow-none border border-black"
+                    type="number"
+                    placeholder="$ 0.00"
+                  />
                 </div>
-              )}
+                <div className="px-5 w-1/2">
+                  <h6 className="text-sm py-1">Discount Hold Sale (%)</h6>
+                  <Input
+                    className="shadow-none border border-black"
+                    type="number"
+                    placeholder="$ 0.00"
+                  />
+                </div>
+
+                <div className="px-5 w-1/2">
+                  <h6 className="text-sm py-1">Sale Price for Premium ($)</h6>
+                  <Input
+                    className="shadow-none border border-black"
+                    type="number"
+                    placeholder="$ 0.00"
+                  />
+                </div>
+                <div className="px-5 w-1/2">
+                  <h6 className="text-sm py-1">Discount Premium (%)</h6>
+                  <Input
+                    className="shadow-none border border-black"
+                    type="number"
+                    placeholder="$ 0.00"
+                  />
+                </div>
+              </div>
             </Card>
+
             <Card>
               <div className="px-5">
                 <h6 className="text-sm py-1 font-bold">Variant</h6>
@@ -554,13 +563,6 @@ export default function Variants() {
 
                             {/* Option Name Input */}
                             <Input
-                              value={option.name}
-                              onChange={(e) =>
-                                handleOptionNameChange(
-                                  option.id,
-                                  e.target.value
-                                )
-                              }
                               className={`${
                                 option.hasError
                                   ? "border-destructive bg-destructive/10"
@@ -584,13 +586,6 @@ export default function Variants() {
 
                             {/* Option Values Input */}
                             <Input
-                              value={option.value}
-                              onChange={(e) =>
-                                handleOptionValueChange(
-                                  option.id,
-                                  e.target.value
-                                )
-                              }
                               className="border-border"
                               placeholder="e.g. Small, Medium, Large"
                             />
@@ -636,11 +631,12 @@ export default function Variants() {
                     <div className="max-w-6xl mx-auto">
                       <div className="bg-white rounded-lg shadow">
                         {/* Header */}
-                        <div className="grid grid-cols-[auto_1fr_150px_150px] gap-4 px-6 py-4 border-b border-gray-200 text-sm font-medium text-gray-600">
+                        <div className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 border-b border-gray-200 text-sm font-medium text-gray-600">
                           <div className="w-6">
                             <Checkbox />
                           </div>
                           <div>Variant · Collapse all</div>
+                          <div>Barcode</div>
                           <div>Price</div>
                           <div>Available</div>
                         </div>
@@ -650,7 +646,7 @@ export default function Variants() {
                           {groups.map((group) => (
                             <div key={group.id}>
                               {/* Group Header */}
-                              <div className="grid grid-cols-[auto_1fr_150px_150px]  gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
+                              <div className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
                                 <div className="w-6">
                                   <Checkbox />
                                 </div>
@@ -678,16 +674,27 @@ export default function Variants() {
                                     />
                                   </button>
                                 </div>
-                                <div>
-                                  <Input
-                                    type="number"
-                                    placeholder="$ 0.00"
-                                    value={group.variants[0]?.price || 0}
-                                    readOnly
-                                    className="bg-gray-50"
-                                  />
-                                </div>
-                                <div className="text-gray-400">0</div>
+
+                                {/* Barcode for Group */}
+                                <Input
+                                  type="text"
+                                  placeholder="Scan or enter barcode"
+                                  className="border border-gray-300"
+                                />
+
+                                {/* Price */}
+                                <Input
+                                  type="number"
+                                  placeholder="$ 0.00"
+                                  className="bg-gray-50"
+                                />
+
+                                {/* Available */}
+                                 <Input
+                                  type="number"
+                                  placeholder="$ 0.00"
+                                  className="bg-gray-50"
+                                />
                               </div>
 
                               {/* Expanded Variants */}
@@ -696,7 +703,7 @@ export default function Variants() {
                                   {group.variants.map((variant: any) => (
                                     <div
                                       key={variant.id}
-                                      className="grid grid-cols-[auto_1fr_150px_150px] pl-16 gap-4 px-6 py-4 items-center border-t border-gray-100 hover:bg-white transition-colors"
+                                      className="grid grid-cols-[auto_1fr_150px_150px_150px] pl-16 gap-4 px-6 py-4 items-center border-t border-gray-100 hover:bg-white transition-colors"
                                     >
                                       <div className="w-6">
                                         <Checkbox />
@@ -711,32 +718,25 @@ export default function Variants() {
                                           {variant.name}
                                         </span>
                                       </div>
+
+                                      {/* Barcode */}
+                                      <Input
+                                        type="text"
+                                        placeholder="Barcode"
+                                        className="border border-gray-300"
+                                      />
+
+                                      {/* Price */}
                                       <Input
                                         type="number"
                                         placeholder="$ 0.00"
-                                        value={variant.price}
-                                        onChange={(e) =>
-                                          updateVariant(
-                                            group.id,
-                                            variant.id,
-                                            "price",
-                                            e.target.value
-                                          )
-                                        }
                                         className="border border-gray-300"
                                       />
+
+                                      {/* Available */}
                                       <Input
                                         type="number"
                                         placeholder="0"
-                                        value={variant.available}
-                                        onChange={(e) =>
-                                          updateVariant(
-                                            group.id,
-                                            variant.id,
-                                            "available",
-                                            e.target.value
-                                          )
-                                        }
                                         className="border border-gray-300"
                                       />
                                     </div>
@@ -760,7 +760,26 @@ export default function Variants() {
           </div>
 
           <div className="w-1/3 rounded-lg">
-            <Card className="shadow-none border rounded-lg"></Card>
+            <Card className="shadow-none border rounded-lg">
+              <div className="px-5">
+                <h6 className="text-sm py-1">Status</h6>
+                <Select>
+                  <SelectTrigger className="w-[100%] shadow-none border border-black">
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Status</SelectLabel>
+                      <SelectItem value="apple">Drafted</SelectItem>
+                      <SelectItem value="banana">Published</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </Card>
+           <div className="flex mt-4 justify-end">
+            <Button className="w-full">Save</Button>
+           </div>
           </div>
         </div>
       </div>
