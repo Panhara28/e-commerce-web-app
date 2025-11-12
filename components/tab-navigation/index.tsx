@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 
 export default function TabNavigation() {
   return (
-    <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border bg-background overflow-x-auto">
+    <div className="flex items-center justify-between px-20 md:px-20 py-4 border-b border-border bg-background overflow-x-auto">
       <div className="flex gap-6 text-sm md:text-base">
         <Tab label="Home" active />
         <Tab label="Apps" />

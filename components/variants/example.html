@@ -1,0 +1,81 @@
+<Card className="p-6 space-y-6 border border-border/60 bg-card shadow-sm">
+      {/* 🧩 Product Info Section */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Product Information</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input placeholder="Title" value={productForm.title} onChange={(e) => setProductForm((p) => ({ ...p, title: e.target.value }))} />
+          <Input placeholder="Vendor" value={productForm.vendor} onChange={(e) => setProductForm((p) => ({ ...p, vendor: e.target.value }))} />
+          <Input placeholder="Type (e.g., Gadget)" value={productForm.type} onChange={(e) => setProductForm((p) => ({ ...p, type: e.target.value }))} />
+          <Input placeholder="Category ID" value={productForm.categoryId} onChange={(e) => setProductForm((p) => ({ ...p, categoryId: e.target.value }))} />
+          <Input type="number" placeholder="Price ($)" value={productForm.price} onChange={(e) => setProductForm((p) => ({ ...p, price: e.target.value }))} />
+          <Input type="number" placeholder="Compare At Price ($)" value={productForm.compareAtPrice} onChange={(e) => setProductForm((p) => ({ ...p, compareAtPrice: e.target.value }))} />
+          <Input type="number" placeholder="Cost Per Item ($)" value={productForm.costPerItem} onChange={(e) => setProductForm((p) => ({ ...p, costPerItem: e.target.value }))} />
+        </div>
+        <Textarea placeholder="Product Description" value={productForm.description} onChange={(e) => setProductForm((p) => ({ ...p, description: e.target.value }))} />
+      </div>
+
+      <Separator />
+
+      {/* 🧩 Variant Builder Section */}
+      <div>
+        <h3 className="text-base font-semibold mb-2">Variants</h3>
+        {variants.length === 0 ? (
+          <Button variant="outline" onClick={handleAddVariant} className="flex items-center gap-2">
+            <PlusCircle className="w-4 h-4" /> Add options like size or color
+          </Button>
+        ) : (
+          <div className="space-y-6">
+            {variants.map((variant, i) => (
+              <Card key={i} className="p-4 border border-border/40 bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">Option {i + 1}</h4>
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteVariant(i)}>
+                    Delete
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  <Input placeholder={defaultVariants[i] || "Option name"} value={variant.name} onChange={(e) => handleNameChange(i, e.target.value)} />
+                  {variant.values.map((val, j) => (
+                    <div key={j} className="flex items-center gap-2">
+                      <Input placeholder={getPlaceholder(variant.name || defaultVariants[i])} value={val} onChange={(e) => handleValueChange(i, j, e.target.value)} />
+                      {val.trim() && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteValue(i, j)}>
+                          <X className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ))}
+            {variants.length < defaultVariants.length && (
+              <Button variant="outline" onClick={handleAddVariant} className="flex items-center gap-2">
+                <PlusCircle className="w-4 h-4" /> Add another option
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 🧩 Variant Combination List */}
+      {isGenerating && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Generating variants…</div>}
+      {!isGenerating && output.variants.length > 0 && (
+        <VariantList
+          data={output}
+          onVariantsChange={(updated) => {
+            const newData = { variants: updated };
+            setOutput(newData);
+            persistStructure(newData);
+          }}
+        />
+      )}
+
+      <Separator />
+
+      {/* 🧩 Save Product */}
+      <div className="pt-4">
+        <Button onClick={handleSaveProduct} className="flex items-center gap-2">
+          <Save className="w-4 h-4" /> Save Product
+        </Button>
+      </div>
+    </Card>
