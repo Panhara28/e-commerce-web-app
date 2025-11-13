@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, PackageOpen } from "lucide-react";
+import { ChevronDown, ChevronUp, PackageOpen, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "../ui/checkbox";
 
 type SubVariant = {
   color: string;
@@ -82,9 +81,9 @@ export default function VariantList({ data, onVariantsChange }: Props) {
         // Editing parent → propagate to all subs for numeric fields
         (newVariants[vIndex] as any)[field] = parsed;
         if (isNumber) {
-          newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
-            (s) => ({ ...s, [field]: parsed })
-          );
+          newVariants[vIndex].sub_variants = newVariants[
+            vIndex
+          ].sub_variants.map((s) => ({ ...s, [field]: parsed }));
         }
       } else {
         // Editing specific sub-variant
@@ -136,150 +135,163 @@ export default function VariantList({ data, onVariantsChange }: Props) {
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-[auto_1fr_150px_150px_150px] border-t gap-4 px-6 py-4 border-b border-gray-200 text-sm font-medium text-gray-600">
+        <div className="w-6">
+          <Checkbox />
+        </div>
+        <div>Variant · Collapse all</div>
+        <div>Barcode</div>
+        <div>Price</div>
+        <div>Available</div>
+      </div>
       {variants.map((variant, vIndex) => {
         const prices = variant.sub_variants.map((s) => s.price);
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         const isRange = min !== max;
+
         const expandable = hasExpandableChildren(variant);
         const realSubs = hasRealSubVariants(variant);
+        const isExpanded = expanded.includes(vIndex);
 
         return (
-          <Card
+          <div
             key={vIndex}
-            className="p-4 border border-border/50 bg-card shadow-sm hover:shadow-md transition-shadow"
+            className="bg-white rounded-lg shadow border border-border/40"
           >
-            {/* Parent Header */}
+            {/* ---------- Parent Variant Row (NEW UI) ---------- */}
             <div
-              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${
-                expandable ? "hover:bg-muted/40 rounded-md p-2 cursor-pointer" : ""
-              }`}
+              className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 items-center hover:bg-slate-50 cursor-pointer"
               onClick={() => expandable && toggleExpand(vIndex)}
             >
-              {/* Left side */}
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-md">
-                  <PackageOpen className="w-5 h-5 text-muted-foreground" />
+              {/* Checkbox */}
+              <div className="w-6 min-w-0">
+                <Checkbox />
+              </div>
+
+              {/* Image + Title */}
+              <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+                <div className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-white hover:bg-gray-50 cursor-pointer shrink-0">
+                  <Image className="text-blue-600" />
                 </div>
-                <div>
-                  <div className="font-medium text-foreground">
-                    {variant.size ||
-                      variant.color ||
-                      variant.material ||
-                      `Variant ${vIndex + 1}`}
-                  </div>
+
+                <div className="flex flex-col truncate">
+                  <span className="text-base font-semibold text-gray-900 truncate">
+                    {variant.size || variant.color || variant.material}
+                  </span>
+
                   {variant.sub_variants.length > 1 && (
-                    <p className="text-xs text-muted-foreground">
-                      {variant.sub_variants.length} combinations
-                    </p>
+                    <span className="text-sm text-gray-600">
+                      {variant.sub_variants.length} variants
+                    </span>
                   )}
                 </div>
-              </div>
 
-              {/* Right side inputs */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:ml-auto w-full sm:w-auto">
-                <Input
-                  type="number"
-                  placeholder={getPricePlaceholder(variant)}
-                  className="text-right"
-                  value={
-                    isRange ? "" : variant.price ? variant.price.toString() : ""
-                  }
-                  onChange={(e) =>
-                    handleChange(vIndex, null, "price", e.target.value)
-                  }
-                />
-                <Input
-                  type="number"
-                  placeholder="Stock"
-                  className="text-right"
-                  value={variant.stock ? variant.stock.toString() : ""}
-                  onChange={(e) =>
-                    handleChange(vIndex, null, "stock", e.target.value)
-                  }
-                />
-                <Input
-                  placeholder="SKU (e.g., ELEC-9991)"
-                  value={variant.sku ?? ""}
-                  onChange={(e) =>
-                    handleChange(vIndex, null, "sku", e.target.value)
-                  }
-                />
-                <Input
-                  placeholder="Image (e.g., mouse-black.png)"
-                  value={variant.imageVariant ?? ""}
-                  onChange={(e) =>
-                    handleChange(vIndex, null, "imageVariant", e.target.value)
-                  }
-                />
                 {expandable &&
-                  (expanded.includes(vIndex) ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground self-center" />
+                  (isExpanded ? (
+                    <ChevronUp size={16} />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground self-center" />
+                    <ChevronDown size={16} />
                   ))}
               </div>
+
+              {/* Barcode */}
+              <Input
+                type="text"
+                placeholder="Barcode"
+                className="border border-gray-300 w-full min-w-0"
+                value={variant.sku ?? ""}
+                onChange={(e) =>
+                  handleChange(vIndex, null, "sku", e.target.value)
+                }
+              />
+
+              {/* Price */}
+              <Input
+                type="number"
+                placeholder={getPricePlaceholder(variant)}
+                className="border border-gray-300 w-full min-w-0"
+                value={
+                  isRange ? "" : variant.price ? variant.price.toString() : ""
+                }
+                onChange={(e) =>
+                  handleChange(vIndex, null, "price", e.target.value)
+                }
+              />
+
+              {/* Stock */}
+              <Input
+                type="number"
+                placeholder="0"
+                className="border border-gray-300 w-full min-w-0"
+                value={variant.stock ? variant.stock.toString() : ""}
+                onChange={(e) =>
+                  handleChange(vIndex, null, "stock", e.target.value)
+                }
+              />
             </div>
 
-            {/* Sub Variants */}
-            {expandable && expanded.includes(vIndex) && realSubs && (
-              <div className="mt-3 pl-9 space-y-2">
-                <Separator className="my-2" />
+            {/* ---------- Children Sub-Variants (NEW UI) ---------- */}
+            {expandable && isExpanded && realSubs && (
+              <div className="bg-gray-50">
                 {variant.sub_variants.map((sub, sIndex) => (
                   <div
                     key={sIndex}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-1"
+                    className="grid grid-cols-[auto_1fr_150px_150px_150px] pl-16 gap-4 px-6 py-4 items-center border-t border-gray-100 hover:bg-white"
                   >
-                    <div className="flex items-center gap-2">
-                      <PackageOpen className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {sub.color || sub.material
-                          ? `${sub.color || ""}${
-                              sub.color && sub.material ? " / " : ""
-                            }${sub.material || ""}`
-                          : "Sub variant"}
+                    <div className="w-6">
+                      <Checkbox />
+                    </div>
+
+                    {/* Sub Variant Info */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-white hover:bg-gray-50">
+                        <Image className="text-blue-600" />
+                      </div>
+
+                      <span className="text-gray-900 text-sm">
+                        {sub.color || ""} {sub.color && sub.material ? "/" : ""}{" "}
+                        {sub.material || ""}
                       </span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 sm:ml-auto w-full sm:w-auto">
-                      <Input
-                        type="number"
-                        placeholder="$ 0.00"
-                        className="text-right"
-                        value={sub.price ? sub.price.toString() : ""}
-                        onChange={(e) =>
-                          handleChange(vIndex, sIndex, "price", e.target.value)
-                        }
-                      />
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        className="text-right"
-                        value={sub.stock ? sub.stock.toString() : ""}
-                        onChange={(e) =>
-                          handleChange(vIndex, sIndex, "stock", e.target.value)
-                        }
-                      />
-                      <Input
-                        placeholder="SKU (e.g., ELEC-9991)"
-                        value={sub.sku ?? ""}
-                        onChange={(e) =>
-                          handleChange(vIndex, sIndex, "sku", e.target.value)
-                        }
-                      />
-                      <Input
-                        placeholder="Image (e.g., mouse-black.png)"
-                        value={sub.imageVariant ?? ""}
-                        onChange={(e) =>
-                          handleChange(vIndex, sIndex, "imageVariant", e.target.value)
-                        }
-                      />
-                    </div>
+                    {/* Barcode */}
+                    <Input
+                      type="text"
+                      placeholder="Barcode"
+                      className="border border-gray-300"
+                      value={sub.sku ?? ""}
+                      onChange={(e) =>
+                        handleChange(vIndex, sIndex, "sku", e.target.value)
+                      }
+                    />
+
+                    {/* Price */}
+                    <Input
+                      type="number"
+                      placeholder="$ 0.00"
+                      className="border border-gray-300"
+                      value={sub.price ? sub.price.toString() : ""}
+                      onChange={(e) =>
+                        handleChange(vIndex, sIndex, "price", e.target.value)
+                      }
+                    />
+
+                    {/* Stock */}
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      className="border border-gray-300"
+                      value={sub.stock ? sub.stock.toString() : ""}
+                      onChange={(e) =>
+                        handleChange(vIndex, sIndex, "stock", e.target.value)
+                      }
+                    />
                   </div>
                 ))}
               </div>
             )}
-          </Card>
+          </div>
         );
       })}
     </div>

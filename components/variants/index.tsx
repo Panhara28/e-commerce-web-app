@@ -1,26 +1,11 @@
 "use client";
 
-import {
-  PlusCircle,
-  X,
-  Loader2,
-  Save,
-  ChevronDown,
-  ChevronUp,
-  AlertCircle,
-  Grip as Grip2,
-  Trash2,
-  Plus,
-  Image,
-} from "lucide-react";
+import { Loader2, X, Grip as Grip2, Trash2, Plus } from "lucide-react";
 import { useState, useEffect, useMemo, startTransition } from "react";
-import { v4 as uuidv4 } from "uuid";
 import VariantList from "./variant-list";
-import { Card, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
 import RichText from "../ui/rich-text";
 import { MediaUpload } from "../media-upload";
 import {
@@ -28,11 +13,9 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Checkbox } from "../ui/checkbox";
 
 // --------------------- Types ---------------------
 type SubVariant = {
@@ -64,8 +47,6 @@ type Product = {
   type: string;
   vendor: string;
   price: number;
-  compareAtPrice: number;
-  costPerItem: number;
   variants: Variant[];
   created_at: string;
 };
@@ -201,15 +182,18 @@ export default function Variants() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // ✅ Product fields
-  const [productForm, setProductForm] = useState({
+  const [productForm, setProductForm]: any = useState({
     title: "",
     description: "",
     categoryId: "",
-    type: "",
-    vendor: "",
+    productCode: "",
+    status: "",
     price: "",
-    compareAtPrice: "",
-    costPerItem: "",
+    discount: "",
+    salePriceHold: "",
+    discountHold: "",
+    salePricePremium: "",
+    discountPremium: "",
   });
 
   const persistStructure = (data: { variants: Variant[] }) =>
@@ -368,29 +352,57 @@ export default function Variants() {
 
   // ------------------------- Save Product (Connected to API) -------------------------
   const handleSaveProduct = async () => {
-    const { title, price, categoryId, vendor } = productForm;
+    const {
+      title,
+      description,
+      categoryId,
+      productCode,
+      status,
+      price,
+      salePriceHold,
+      discountHold,
+      salePricePremium,
+      discountPremium,
+    } = productForm;
 
-    if (!title || !price || !categoryId || !vendor) {
+    // Validate required fields
+    if (!title || !price || !categoryId) {
       alert("⚠️ Please fill all required product fields!");
       return;
     }
 
-    // ✅ Build product payload
+    // ✅ Build product payload EXACTLY matching API
     const productPayload = {
-      title: productForm.title.trim(),
-      description: { text: productForm.description.trim() },
-      categoryId: parseInt(productForm.categoryId),
-      type: productForm.type || "Standard",
-      vendor: productForm.vendor.trim(),
-      price: parseFloat(productForm.price),
-      compareAtPrice: parseFloat(productForm.compareAtPrice) || 0,
-      costPerItem: parseFloat(productForm.costPerItem) || 0,
-      variants: output.variants,
-      mediaUrls: [], // Optional: later connect your image uploader here
+      title: title.trim(),
+      description: { text: description.trim() },
+
+      categoryId: parseInt(categoryId),
+      productCode: productCode?.trim() || "",
+      status: status || "DRAFT",
+
+      price: parseFloat(price) || 0,
+      salePriceHold: parseFloat(salePriceHold) || 0,
+      discountHold: parseFloat(discountHold) || 0,
+      salePricePremium: parseFloat(salePricePremium) || 0,
+      discountPremium: parseFloat(discountPremium) || 0,
+
+      // Variants generated from your variant system
+      variants: output.variants.map((v: any) => ({
+        size: v.size || "",
+        color: v.color || "",
+        material: v.material || "",
+        price: v.price || 0,
+        stock: v.stock || 0,
+        barcode: v.barcode || "",
+        imageVariant: v.imageVariant || "",
+      })),
+
+      // TODO: Add uploaded images later
+      mediaUrls: [],
     };
 
     try {
-      // ✅ Call your API
+      // Call your API
       const response = await fetch("/api/products/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -402,25 +414,20 @@ export default function Variants() {
       if (response.ok && data.status === "ok") {
         alert(`✅ ${data.message}`);
 
-        // Optional: store locally for cache/history
-        const existingRaw = localStorage.getItem(PRODUCT_KEY);
-        const existing: Product[] = existingRaw ? JSON.parse(existingRaw) : [];
-        localStorage.setItem(
-          PRODUCT_KEY,
-          JSON.stringify([...existing, data.data])
-        );
-
         // Reset form + variant data
         setProductForm({
           title: "",
           description: "",
           categoryId: "",
-          type: "",
-          vendor: "",
+          productCode: "",
+          status: "",
           price: "",
-          compareAtPrice: "",
-          costPerItem: "",
+          salePriceHold: "",
+          discountHold: "",
+          salePricePremium: "",
+          discountPremium: "",
         });
+
         localStorage.removeItem(STRUCTURE_KEY);
         setOutput({ variants: [] });
         setVariants([]);
@@ -439,7 +446,7 @@ export default function Variants() {
     <>
       <div className="container mx-auto">
         <div className="flex gap-3">
-          <div className="w-2/3 rounded-lg">
+          <div className="w-2/2 rounded-lg">
             <Card className="shadow-none border rounded-lg">
               <div className="px-5">
                 <h6 className="text-sm py-1">Title</h6>
@@ -447,11 +454,20 @@ export default function Variants() {
                   className="shadow-none border border-black"
                   type="text"
                   placeholder="Short sleeve t-shirt"
+                  value={productForm.title}
+                  onChange={(e) =>
+                    setProductForm({ ...productForm, title: e.target.value })
+                  }
                 />
               </div>
               <div className="px-5">
                 <h6 className="text-sm py-1">Description</h6>
-                <RichText />
+                <RichText
+                  value={productForm.description}
+                  onChange={(val) =>
+                    setProductForm({ ...productForm, description: val })
+                  }
+                />
               </div>
               <div className="px-5">
                 <h6 className="text-sm py-1">Media</h6>
@@ -460,18 +476,20 @@ export default function Variants() {
               <div className="flex flex-wrap">
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Category</h6>
-                  <Select>
+                  <Select
+                    value={productForm.categoryId}
+                    onValueChange={(val) =>
+                      setProductForm({ ...productForm, categoryId: val })
+                    }
+                  >
                     <SelectTrigger className="w-[100%] shadow-none border border-black">
-                      <SelectValue placeholder="Select a fruit" />
+                      <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectLabel>Fruits</SelectLabel>
-                        <SelectItem value="apple">Apple</SelectItem>
-                        <SelectItem value="banana">Banana</SelectItem>
-                        <SelectItem value="blueberry">Blueberry</SelectItem>
-                        <SelectItem value="grapes">Grapes</SelectItem>
-                        <SelectItem value="pineapple">Pineapple</SelectItem>
+                        <SelectItem value="1">Clothes</SelectItem>
+                        <SelectItem value="2">Shoes</SelectItem>
+                        <SelectItem value="3">Accessories</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -481,7 +499,14 @@ export default function Variants() {
                   <Input
                     className="shadow-none border border-black"
                     type="text"
-                    placeholder="Short sleeve t-shirt"
+                    placeholder="TSH-001"
+                    value={productForm.productCode}
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        productCode: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -493,6 +518,10 @@ export default function Variants() {
                   <Input
                     className="shadow-none border border-black"
                     type="number"
+                    value={productForm.price}
+                    onChange={(e) =>
+                      setProductForm({ ...productForm, price: e.target.value })
+                    }
                     placeholder="$ 0.00"
                   />
                 </div>
@@ -510,6 +539,13 @@ export default function Variants() {
                   <Input
                     className="shadow-none border border-black"
                     type="number"
+                    value={productForm.salePriceHold}
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        salePriceHold: e.target.value,
+                      })
+                    }
                     placeholder="$ 0.00"
                   />
                 </div>
@@ -518,7 +554,14 @@ export default function Variants() {
                   <Input
                     className="shadow-none border border-black"
                     type="number"
-                    placeholder="$ 0.00"
+                    value={productForm.discountHold}
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        discountHold: e.target.value,
+                      })
+                    }
+                    placeholder="0"
                   />
                 </div>
 
@@ -535,7 +578,14 @@ export default function Variants() {
                   <Input
                     className="shadow-none border border-black"
                     type="number"
-                    placeholder="$ 0.00"
+                    value={productForm.discountPremium}
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        discountPremium: e.target.value,
+                      })
+                    }
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -546,61 +596,82 @@ export default function Variants() {
                 <h6 className="text-sm py-1 font-bold">Variant</h6>
               </div>
               <div className="flex justify-center">
+                {/* 🧩 Variant Builder Section - NEW UI INTERFACE */}
                 <div className="w-full mx-5 rounded-lg border border-border bg-card p-6">
                   <div className="space-y-6">
-                    {options.map((option) => (
-                      <div key={option.id} className="space-y-4">
-                        {/* Option Row with Drag Handle */}
+                    {/* --- Variant Options UI (Size, Color, Material) --- */}
+                    {variants.map((variant, i) => (
+                      <div key={i} className="space-y-4">
                         <div className="flex items-start gap-3">
+                          {/* Drag Handle */}
                           <div className="mt-3 cursor-grab active:cursor-grabbing">
                             <Grip2 className="h-5 w-5 text-muted-foreground" />
                           </div>
+
                           <div className="flex-1 space-y-2">
-                            {/* Option Name Label */}
+                            {/* Label */}
                             <label className="text-sm font-medium text-foreground">
                               Option name
                             </label>
 
-                            {/* Option Name Input */}
+                            {/* Option Name Input (OLD LOGIC) */}
                             <Input
-                              className={`${
-                                option.hasError
-                                  ? "border-destructive bg-destructive/10"
-                                  : "border-border"
-                              }`}
-                              placeholder="e.g. Size"
+                              className="border-border"
+                              placeholder={defaultVariants[i] || "Option name"}
+                              value={variant.name}
+                              onChange={(e) =>
+                                handleNameChange(i, e.target.value)
+                              }
                             />
 
-                            {/* Error Message */}
-                            {option.hasError && (
-                              <div className="flex items-center gap-2 text-sm text-destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <span>Option name is required.</span>
-                              </div>
-                            )}
-
-                            {/* Option Values Label */}
+                            {/* Values Label */}
                             <label className="mt-4 block text-sm font-medium text-foreground">
                               Option values
                             </label>
 
-                            {/* Option Values Input */}
-                            <Input
-                              className="border-border"
-                              placeholder="e.g. Small, Medium, Large"
-                            />
+                            {/* Option Values Inputs (OLD LOGIC FULLY APPLIED) */}
+                            {variant.values.map((val, j) => (
+                              <div
+                                key={j}
+                                className="flex items-center gap-2 my-1"
+                              >
+                                <Input
+                                  className="border-border"
+                                  placeholder={getPlaceholder(
+                                    variant.name || defaultVariants[i]
+                                  )}
+                                  value={val}
+                                  onChange={(e) =>
+                                    handleValueChange(i, j, e.target.value)
+                                  }
+                                />
 
-                            {/* Action Buttons */}
+                                {/* Delete Value button (ONLY IF NOT EMPTY — OLD LOGIC) */}
+                                {val.trim() && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleDeleteValue(i, j)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+
+                            {/* Action Buttons (OLD LOGIC: delete entire option) */}
                             <div className="flex items-center justify-between gap-2 pt-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDeleteOption(option.id)}
+                                onClick={() => handleDeleteVariant(i)}
                               >
                                 <Trash2 className="mr-1 h-4 w-4" />
                                 Delete
                               </Button>
+
                               <Button
                                 size="sm"
                                 className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -612,147 +683,42 @@ export default function Variants() {
                         </div>
 
                         {/* Divider */}
-                        {option.id !== options[options.length - 1].id && (
+                        {i !== variants.length - 1 && (
                           <hr className="border-border" />
                         )}
                       </div>
                     ))}
-                    <CardFooter className="px-0 border-t">
-                      <Button
-                        variant="ghost"
-                        className="text-foreground hover:bg-muted"
-                        onClick={handleAddOption}
-                      >
-                        <Plus className="" />
-                        Add another option
-                      </Button>
-                    </CardFooter>
-                    {/* Add Another Option Button */}
-                    <div className="max-w-6xl mx-auto">
-                      <div className="bg-white rounded-lg shadow">
-                        {/* Header */}
-                        <div className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 border-b border-gray-200 text-sm font-medium text-gray-600">
-                          <div className="w-6">
-                            <Checkbox />
-                          </div>
-                          <div>Variant · Collapse all</div>
-                          <div>Barcode</div>
-                          <div>Price</div>
-                          <div>Available</div>
-                        </div>
 
-                        {/* Variant Groups */}
-                        <div className="divide-y divide-gray-200">
-                          {groups.map((group) => (
-                            <div key={group.id}>
-                              {/* Group Header */}
-                              <div className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
-                                <div className="w-6">
-                                  <Checkbox />
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="w-25 h-25 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition-colors cursor-pointer">
-                                    <div className="flex flex-col items-center justify-center text-blue-600">
-                                      <Image />
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => toggleGroup(group.id)}
-                                    className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
-                                  >
-                                    <span className="text-base font-semibold text-gray-900">
-                                      {group.size}
-                                    </span>
-                                    <span className="text-sm text-gray-600">
-                                      {group.variantCount} variants
-                                    </span>
-                                    <ChevronDown
-                                      size={16}
-                                      className={`transition-transform ${
-                                        group.isExpanded ? "" : "-rotate-90"
-                                      }`}
-                                    />
-                                  </button>
-                                </div>
+                    {/* Add Another Option (OLD LOGIC) */}
+                    {variants.length < defaultVariants.length && (
+                      <CardFooter className="px-0">
+                        <Button
+                          variant="ghost"
+                          className="text-foreground hover:bg-muted flex items-center gap-2"
+                          onClick={handleAddVariant}
+                        >
+                          <Plus className="h-4 w-4" /> Add another option
+                        </Button>
+                      </CardFooter>
+                    )}
 
-                                {/* Barcode for Group */}
-                                <Input
-                                  type="text"
-                                  placeholder="Scan or enter barcode"
-                                  className="border border-gray-300"
-                                />
-
-                                {/* Price */}
-                                <Input
-                                  type="number"
-                                  placeholder="$ 0.00"
-                                  className="bg-gray-50"
-                                />
-
-                                {/* Available */}
-                                 <Input
-                                  type="number"
-                                  placeholder="$ 0.00"
-                                  className="bg-gray-50"
-                                />
-                              </div>
-
-                              {/* Expanded Variants */}
-                              {group.isExpanded && (
-                                <div className="bg-gray-50">
-                                  {group.variants.map((variant: any) => (
-                                    <div
-                                      key={variant.id}
-                                      className="grid grid-cols-[auto_1fr_150px_150px_150px] pl-16 gap-4 px-6 py-4 items-center border-t border-gray-100 hover:bg-white transition-colors"
-                                    >
-                                      <div className="w-6">
-                                        <Checkbox />
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-15 h-15 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors cursor-pointer">
-                                          <div className="flex flex-col items-center justify-center text-blue-600">
-                                            <Image />
-                                          </div>
-                                        </div>
-                                        <span className="text-gray-900">
-                                          {variant.name}
-                                        </span>
-                                      </div>
-
-                                      {/* Barcode */}
-                                      <Input
-                                        type="text"
-                                        placeholder="Barcode"
-                                        className="border border-gray-300"
-                                      />
-
-                                      {/* Price */}
-                                      <Input
-                                        type="number"
-                                        placeholder="$ 0.00"
-                                        className="border border-gray-300"
-                                      />
-
-                                      {/* Available */}
-                                      <Input
-                                        type="number"
-                                        placeholder="0"
-                                        className="border border-gray-300"
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-6 py-6 text-center text-gray-700 bg-gray-50 rounded-b-lg">
-                          Total inventory at Shop location: 0 available
-                        </div>
+                    {/* 🧩 Variant Combination List */}
+                    {isGenerating && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Generating
+                        variants…
                       </div>
-                    </div>
+                    )}
+                    {!isGenerating && output.variants.length > 0 && (
+                      <VariantList
+                        data={output}
+                        onVariantsChange={(updated) => {
+                          const newData = { variants: updated };
+                          setOutput(newData);
+                          persistStructure(newData);
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -763,23 +729,30 @@ export default function Variants() {
             <Card className="shadow-none border rounded-lg">
               <div className="px-5">
                 <h6 className="text-sm py-1">Status</h6>
-                <Select>
+                <Select
+                  value={productForm.status}
+                  onValueChange={(val) =>
+                    setProductForm({ ...productForm, status: val })
+                  }
+                >
                   <SelectTrigger className="w-[100%] shadow-none border border-black">
-                    <SelectValue placeholder="Select a status" />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectGroup>
-                      <SelectLabel>Status</SelectLabel>
-                      <SelectItem value="apple">Drafted</SelectItem>
-                      <SelectItem value="banana">Published</SelectItem>
+                      <SelectItem value="DRAFT">Draft</SelectItem>
+                      <SelectItem value="PUBLISHED">Published</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
             </Card>
-           <div className="flex mt-4 justify-end">
-            <Button className="w-full">Save</Button>
-           </div>
+            <div className="flex mt-4 justify-end">
+              <Button className="w-full" onClick={handleSaveProduct}>
+                Save
+              </Button>
+            </div>
           </div>
         </div>
       </div>

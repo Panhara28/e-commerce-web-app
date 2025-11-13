@@ -127,3 +127,296 @@
                   </div>
                 </div>
               )}
+
+
+              <div className="space-y-6">
+                    {options.map((option) => (
+                      <div key={option.id} className="space-y-4">
+                        {/* Option Row with Drag Handle */}
+                        <div className="flex items-start gap-3">
+                          <div className="mt-3 cursor-grab active:cursor-grabbing">
+                            <Grip2 className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            {/* Option Name Label */}
+                            <label className="text-sm font-medium text-foreground">
+                              Option name
+                            </label>
+
+                            {/* Option Name Input */}
+                            <Input
+                              className={`${
+                                option.hasError
+                                  ? "border-destructive bg-destructive/10"
+                                  : "border-border"
+                              }`}
+                              placeholder="e.g. Size"
+                            />
+
+                            {/* Error Message */}
+                            {option.hasError && (
+                              <div className="flex items-center gap-2 text-sm text-destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>Option name is required.</span>
+                              </div>
+                            )}
+
+                            {/* Option Values Label */}
+                            <label className="mt-4 block text-sm font-medium text-foreground">
+                              Option values
+                            </label>
+
+                            {/* Option Values Input */}
+                            <Input
+                              className="border-border"
+                              placeholder="e.g. Small, Medium, Large"
+                            />
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center justify-between gap-2 pt-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteOption(option.id)}
+                              >
+                                <Trash2 className="mr-1 h-4 w-4" />
+                                Delete
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                              >
+                                Done
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Divider */}
+                        {option.id !== options[options.length - 1].id && (
+                          <hr className="border-border" />
+                        )}
+                      </div>
+                    ))}
+                    <CardFooter className="px-0 border-t">
+                      <Button
+                        variant="ghost"
+                        className="text-foreground hover:bg-muted"
+                        onClick={handleAddOption}
+                      >
+                        <Plus className="" />
+                        Add another option
+                      </Button>
+                    </CardFooter>
+                    {/* Add Another Option Button */}
+                    <div className="max-w-6xl mx-auto">
+                      <div className="bg-white rounded-lg shadow">
+                        {/* Header */}
+                        <div className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 border-b border-gray-200 text-sm font-medium text-gray-600">
+                          <div className="w-6">
+                            <Checkbox />
+                          </div>
+                          <div>Variant · Collapse all</div>
+                          <div>Barcode</div>
+                          <div>Price</div>
+                          <div>Available</div>
+                        </div>
+
+                        {/* Variant Groups */}
+                        <div className="divide-y divide-gray-200">
+                          {groups.map((group) => (
+                            <div key={group.id}>
+                              {/* Group Header */}
+                              <div className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
+                                <div className="w-6">
+                                  <Checkbox />
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-25 h-25 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition-colors cursor-pointer">
+                                    <div className="flex flex-col items-center justify-center text-blue-600">
+                                      <Image />
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => toggleGroup(group.id)}
+                                    className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
+                                  >
+                                    <span className="text-base font-semibold text-gray-900">
+                                      {group.size}
+                                    </span>
+                                    <span className="text-sm text-gray-600">
+                                      {group.variantCount} variants
+                                    </span>
+                                    <ChevronDown
+                                      size={16}
+                                      className={`transition-transform ${
+                                        group.isExpanded ? "" : "-rotate-90"
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+
+                                {/* Barcode for Group */}
+                                <Input
+                                  type="text"
+                                  placeholder="Scan or enter barcode"
+                                  className="border border-gray-300"
+                                />
+
+                                {/* Price */}
+                                <Input
+                                  type="number"
+                                  placeholder="$ 0.00"
+                                  className="bg-gray-50"
+                                />
+
+                                {/* Available */}
+                                <Input
+                                  type="number"
+                                  placeholder="$ 0.00"
+                                  className="bg-gray-50"
+                                />
+                              </div>
+
+                              {/* Expanded Variants */}
+                              {group.isExpanded && (
+                                <div className="bg-gray-50">
+                                  {group.variants.map((variant: any) => (
+                                    <div
+                                      key={variant.id}
+                                      className="grid grid-cols-[auto_1fr_150px_150px_150px] pl-16 gap-4 px-6 py-4 items-center border-t border-gray-100 hover:bg-white transition-colors"
+                                    >
+                                      <div className="w-6">
+                                        <Checkbox />
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-15 h-15 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors cursor-pointer">
+                                          <div className="flex flex-col items-center justify-center text-blue-600">
+                                            <Image />
+                                          </div>
+                                        </div>
+                                        <span className="text-gray-900">
+                                          {variant.name}
+                                        </span>
+                                      </div>
+
+                                      {/* Barcode */}
+                                      <Input
+                                        type="text"
+                                        placeholder="Barcode"
+                                        className="border border-gray-300"
+                                      />
+
+                                      {/* Price */}
+                                      <Input
+                                        type="number"
+                                        placeholder="$ 0.00"
+                                        className="border border-gray-300"
+                                      />
+
+                                      {/* Available */}
+                                      <Input
+                                        type="number"
+                                        placeholder="0"
+                                        className="border border-gray-300"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-6 text-center text-gray-700 bg-gray-50 rounded-b-lg">
+                          Total inventory at Shop location: 0 available
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+
+
+
+                                      {/* --- Variant Groups Preview (combination list) --- */}
+                    {!isGenerating && output.variants.length > 0 && (
+                      <>
+                        <div className="bg-white rounded-lg shadow">
+                          {/* Header */}
+                          <div className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 border-b border-gray-200 text-sm font-medium text-gray-600">
+                            <div className="w-6">
+                              <Checkbox />
+                            </div>
+                            <div>Variant · Collapse all</div>
+                            <div>Barcode</div>
+                            <div>Price</div>
+                            <div>Available</div>
+                          </div>
+
+                          {/* Groups */}
+                          <div className="divide-y divide-gray-200">
+                            {output.variants.map((variant, index) => {
+                              const isExpanded = true; // always expanded for now
+
+                              return (
+                                <div key={index}>
+                                  {/* Parent Variant */}
+                                  <div className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
+                                    <div className="w-6">
+                                      <Checkbox />
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-25 h-25 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition-colors cursor-pointer">
+                                        <Image className="text-blue-600" />
+                                      </div>
+
+                                      <button className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity">
+                                        <span className="text-base font-semibold text-gray-900">
+                                          {variant.size ||
+                                            variant.color ||
+                                            variant.material}
+                                        </span>
+                                        <span className="text-sm text-gray-600">
+                                          {variant.sub_variants?.length || 0}{" "}
+                                          variants
+                                        </span>
+                                      </button>
+                                    </div>
+
+                                    {/* Barcode */}
+                                    <Input
+                                      type="text"
+                                      placeholder="Barcode"
+                                      className="border border-gray-300"
+                                    />
+
+                                    {/* Price */}
+                                    <Input
+                                      type="number"
+                                      placeholder="$ 0.00"
+                                      className="border border-gray-300"
+                                    />
+
+                                    {/* Stock */}
+                                    <Input
+                                      type="number"
+                                      placeholder="0"
+                                      className="border border-gray-300"
+                                    />
+                                  </div>
+
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Footer */}
+                          <div className="px-6 py-6 text-center text-gray-700 bg-gray-50 rounded-b-lg">
+                            Total inventory at Shop location: 0 available
+                          </div>
+                        </div>
+                      </>
+                    )}

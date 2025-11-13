@@ -4,134 +4,96 @@ import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient();
 
-// --- DTO Types ---
-interface SubVariant {
-  color?: string;
-  material?: string;
-  price: number;
-  stock: number;
-  sku?: string;
-  imageVariant?: string;
-}
-
-interface Variant {
-  size?: string;
-  color?: string;
-  material?: string;
-  price: number;
-  stock: number;
-  sku?: string;
-  imageVariant?: string;
-  sub_variants?: SubVariant[];
-}
-
-interface CreateProductDto {
-  title: string;
-  description?: object;
-  categoryId?: number;
-  type?: string;
-  vendor: string;
-  price?: number;
-  compareAtPrice?: number;
-  costPerItem?: number;
-  variants?: Variant[];
-  mediaUrls?: Array<{ url: string }>;
-}
-
-// -----------------------------------------------------------------------------
-// POST /api/products/add
-// -----------------------------------------------------------------------------
 export async function POST(req: Request) {
   try {
-    const payload: CreateProductDto = await req.json();
+    const payload = await req.json();
 
-    if (!payload.title || !payload.vendor) {
+    // ---------------------
+    // Validate Required Fields
+    // ---------------------
+    if (!payload.title) {
       return NextResponse.json(
         { message: "Missing required fields: title or vendor" },
         { status: 400 }
       );
     }
 
-    // ✅ Flatten nested sub_variants to a single array
-    const flatVariants = payload.variants
-      ? payload.variants.flatMap((variant) => {
-          if (variant.sub_variants && variant.sub_variants.length > 0) {
-            return variant.sub_variants.map((sub) => ({
-              slug: uuidv4(),
-              size: variant.size ?? "",
-              color: sub.color ?? variant.color ?? "",
-              material: sub.material ?? variant.material ?? "",
-              price: sub.price ?? variant.price ?? 0,
-              stock: sub.stock ?? variant.stock ?? 0,
-              sku: sub.sku ?? variant.sku ?? "",
-              imageVariant: sub.imageVariant ?? variant.imageVariant ?? "",
-              compareAtPrice: payload.compareAtPrice,
-              costPerItem: payload.costPerItem,
-            }));
-          }
-
-          // If variant has no sub-variants
-          return [
-            {
-              slug: uuidv4(),
-              size: variant.size ?? "",
-              color: variant.color ?? "",
-              material: variant.material ?? "",
-              price: variant.price ?? 0,
-              stock: variant.stock ?? 0,
-              sku: variant.sku ?? "",
-              imageVariant: variant.imageVariant ?? "",
-              compareAtPrice: payload.compareAtPrice,
-              costPerItem: payload.costPerItem,
-            },
-          ];
-        })
-      : [];
-
-    // ✅ Create product
-    const createdProduct = await prisma.product.create({
+    // ---------------------
+    // Create Product
+    // ---------------------
+    const product = await prisma.product.create({
       data: {
         slug: uuidv4(),
         title: payload.title,
         description: payload.description ?? {},
-        categoryId: payload.categoryId ? Number(payload.categoryId) : undefined,
-        type: payload.type ?? "",
-        vendor: payload.vendor,
+        categoryId: payload.categoryId ? Number(payload.categoryId) : null,
+
+        productCode: payload.productCode || null,
+        status: payload.status || "draft",
+
+        // Prices
         price: payload.price ?? 0,
-        compareAtPrice: payload.compareAtPrice,
-        costPerItem: payload.costPerItem,
-        variants: {
-          create: flatVariants,
-        },
+
+        // Additional UI Pricing
+        salePriceHold: payload.salePriceHold ?? 0,
+        discountHold: payload.discountHold ?? 0,
+        salePricePremium: payload.salePricePremium ?? 0,
+        discountPremium: payload.discountPremium ?? 0,
+
+        // Variants created later
       },
-      include: { variants: true },
     });
 
-    // ✅ Optional media URLs
-    if (payload.mediaUrls?.length) {
-      await prisma.mediaProductDetails.createMany({
-        data: payload.mediaUrls.map((media) => ({
-          url: media.url,
-          productId: createdProduct.id,
+    // ---------------------
+    // Create Variants
+    // ---------------------
+    if (payload.variants?.length) {
+      await prisma.variant.createMany({
+        data: payload.variants.map((v: any) => ({
           slug: uuidv4(),
+          productId: product.id,
+
+          size: v.size ?? "",
+          color: v.color ?? "",
+          material: v.material ?? "",
+
+          price: v.price ?? 0,
+          stock: v.stock ?? 0,
+          imageVariant: v.imageVariant ?? "",
+          barcode: v.barcode ?? "",
+
+          // Sub-variants must be created separately
         })),
       });
     }
 
-    // ✅ Return clean success response
+    // ---------------------
+    // Media URLs
+    // ---------------------
+    if (payload.mediaUrls?.length) {
+      await prisma.mediaProductDetails.createMany({
+        data: payload.mediaUrls.map((m: any) => ({
+          slug: uuidv4(),
+          productId: product.id,
+          url: m.url,
+        })),
+      });
+    }
+
     return NextResponse.json(
       {
         status: "ok",
-        message: "✅ Product has been created successfully.",
+        message: "Product created successfully.",
+        productId: product.id,
       },
       { status: 201 }
     );
-  } catch (error: unknown) {
-    console.error("❌ Error creating product:", error);
+  } catch (error) {
+    console.error("Error creating product:", error);
     return NextResponse.json(
       {
         status: "error",
-        message: "❌ Failed to create product.",
+        message: "Failed to create product.",
         error: String(error),
       },
       { status: 500 }

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
@@ -13,7 +7,6 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
-
 
 model User {
   id             Int      @id @default(autoincrement())
@@ -28,7 +21,7 @@ model User {
   profilePicture String
   Media          Media[]
 
-  @@index([roleId], map: "users_roleId_fkey")
+  @@index([roleId])
   @@map("users")
 }
 
@@ -66,34 +59,34 @@ model RolePermission {
   slug         String     @unique @default(uuid())
 
   @@id([roleId, permissionId])
-  @@index([permissionId], map: "role_permissions_permissionId_fkey")
   @@map("role_permissions")
 }
 
 model Media {
   id             Int        @id @default(autoincrement())
   slug           String     @unique @default(uuid())
-  filename       String // Original file name
-  storedFilename String // Name stored in the server
-  url            String // Public URL or path
-  type           MediaType // Enum: IMAGE, VIDEO, etc.
+  filename       String
+  storedFilename String
+  url            String
+  type           MediaType
   mimetype       String
   extension      String
-  size           Int // In bytes
-  title          String? // Optional human-readable title
-  altText        String? // Alt text (for images)
-  description    String? // Optional description
-  uploadedById   Int // Reference to User
+  size           Int
+  title          String?
+  altText        String?
+  description    String?
+  uploadedById   Int
   uploadedBy     User       @relation(fields: [uploadedById], references: [id])
   uploadedAt     DateTime   @default(now())
-  width          Int? // Optional: for images
-  height         Int? // Optional: for images
-  visibility     Visibility @default(PUBLIC) // PUBLIC, PRIVATE, RESTRICTED
+  width          Int?
+  height         Int?
+  visibility     Visibility @default(PUBLIC)
   isDeleted      Boolean    @default(false)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
-  Product        Product?   @relation(fields: [productId], references: [id])
+
   productId      Int?
+  Product        Product?   @relation(fields: [productId], references: [id])
 
   @@map("medias")
 }
@@ -112,24 +105,34 @@ enum Visibility {
   RESTRICTED
 }
 
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+}
+
 model Product {
   id                  Int                   @id @default(autoincrement())
   slug                String                @unique @default(uuid())
   title               String
   description         Json?
   media               Media[]
-  type                String
-  vendor              String
-  variants            Variant[]
-  status              ProductStatus         @default(ACTIVE)
+  productCode         String?
+  status              ProductStatus         @default(DRAFT)
+
   price               Float                 @default(0.0)
-  compareAtPrice      Float?
-  costPerItem         Float?
+  salePriceHold       Float?                // Optional
+  discountHold        Float?                // Optional
+  salePricePremium    Float?                // Optional
+  discountPremium     Float?                // Optional
+
+  variants            Variant[]
+  MediaProductDetails MediaProductDetails[]
+
+  Category            Category?             @relation(fields: [categoryId], references: [id])
+  categoryId          Int?
+
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
-  MediaProductDetails MediaProductDetails[]
-  Category            Category?             @relation(fields: [categoryId], references: [id])
-  categoryId          Int? // <-- changed from String? to Int?
 
   @@map("products")
 }
@@ -138,10 +141,10 @@ model Category {
   id        Int        @id @default(autoincrement())
   name      String
   slug      String     @unique @default(uuid())
-  parentId  Int? // <-- fixed type to match `id`
+  parentId  Int?
   parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children  Category[] @relation("CategoryHierarchy")
-  products  Product[] // ← relationship to Product
+  products  Product[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -150,34 +153,29 @@ model Category {
 }
 
 model Variant {
-  id             Int     @id @default(autoincrement())
-  product        Product @relation(fields: [productId], references: [id])
+  id             Int        @id @default(autoincrement())
+  slug           String     @unique @default(uuid())
   productId      Int
-  size           String
-  color          String
-  material       String  @default("")
-  price          Float
-  compareAtPrice Float?
-  costPerItem    Float?
-  stock          Int     @default(0)
-  sku            String
-  imageVariant   String
-  slug           String  @unique @default(uuid())
+  product        Product    @relation(fields: [productId], references: [id])
 
-  @@map("varaints")
+  size           String?
+  color          String?
+  material       String?     @default("")
+  price          Float       @default(0)
+  stock          Int         @default(0)
+  barcode        String?     @default("")
+  imageVariant   String?     @default("")
+
+  @@map("variants")
 }
 
-enum ProductStatus {
-  ACTIVE
-  INACTIVE
-}
 
 model MediaProductDetails {
   id        Int      @id @default(autoincrement())
-  url       String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId Int
   slug      String   @unique @default(uuid())
+  url       String
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
