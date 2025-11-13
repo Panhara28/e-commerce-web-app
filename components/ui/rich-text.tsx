@@ -11,7 +11,9 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { ParagraphNode, TextNode } from "lexical";
+import { ParagraphNode, TextNode, EditorState, $getRoot } from "lexical";
+
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToolbarPlugin } from "@/components/editor/plugins/toolbar/toolbar-plugin";
@@ -42,40 +44,24 @@ const editorConfig: InitialConfigType = {
   },
 };
 
-export default function RichText() {
+export default function RichText({ value, onChange }: any) {
   return (
     <div className="bg-[#fff] w-full overflow-hidden rounded-lg border">
-      <LexicalComposer
-        initialConfig={{
-          ...editorConfig,
-        }}
-      >
+      <LexicalComposer initialConfig={editorConfig}>
         <TooltipProvider>
-          <Plugins />
+          <EditorContent onChange={onChange} />
         </TooltipProvider>
       </LexicalComposer>
     </div>
   );
 }
 
-const placeholder = "Start typing...";
-
-export function Plugins() {
-  const [floatingAnchorElem, setFloatingAnchorElem] =
-    useState<HTMLDivElement | null>(null);
-
-  const onRef = (_floatingAnchorElem: HTMLDivElement) => {
-    if (_floatingAnchorElem !== null) {
-      setFloatingAnchorElem(_floatingAnchorElem);
-    }
-  };
-
+function EditorContent({ onChange }: any) {
   return (
-    <div className="relative">
-      {/* toolbar plugins */}
+    <>
       <ToolbarPlugin>
         {({ blockType }) => (
-          <div className="vertical-align-middle sticky top-0 z-10 flex gap-2 overflow-auto border-b p-1">
+          <div className="sticky top-0 z-10 flex gap-2 overflow-auto border-b p-1 bg-white">
             <BlockFormatDropDown>
               <FormatParagraph />
               <FormatHeading levels={["h1", "h2", "h3"]} />
@@ -89,25 +75,29 @@ export function Plugins() {
         )}
       </ToolbarPlugin>
 
-      <div className="relative">
-        <RichTextPlugin
-          contentEditable={
-            <div className="">
-              <div className="" ref={onRef}>
-                <ContentEditable
-                  placeholder={placeholder}
-                  className="ContentEditable__root relative block h-72 min-h-72 min-h-full overflow-auto px-8 py-4 focus:outline-none"
-                />
-              </div>
-            </div>
-          }
-          ErrorBoundary={LexicalErrorBoundary}
-        />
-        <ListPlugin />
-        <CheckListPlugin />
-        {/* <FontFormatToolbarPlugin /> */}
-        {/* rest of the plugins */}
-      </div>
-    </div>
+      <RichTextPlugin
+        contentEditable={
+          <ContentEditable
+            placeholder="Start typing..."
+            className="ContentEditable__root relative block h-72 min-h-72 overflow-auto px-8 py-4 focus:outline-none"
+          />
+        }
+        ErrorBoundary={LexicalErrorBoundary}
+      />
+
+      {/* List Plugins */}
+      <ListPlugin />
+      <CheckListPlugin />
+
+      {/* 🔥 THIS IS THE FIX — capture editor JSON */}
+      <OnChangePlugin
+        onChange={(editorState: EditorState) => {
+          editorState.read(() => {
+            const json = editorState.toJSON();
+            onChange && onChange(json);
+          });
+        }}
+      />
+    </>
   );
 }

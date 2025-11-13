@@ -374,7 +374,8 @@ export default function Variants() {
     // ✅ Build product payload EXACTLY matching API
     const productPayload = {
       title: title.trim(),
-      description: { text: description.trim() },
+      description: description ? description : {},
+
 
       categoryId: parseInt(categoryId),
       productCode: productCode?.trim() || "",
@@ -387,15 +388,29 @@ export default function Variants() {
       discountPremium: parseFloat(discountPremium) || 0,
 
       // Variants generated from your variant system
-      variants: output.variants.map((v: any) => ({
-        size: v.size || "",
-        color: v.color || "",
-        material: v.material || "",
-        price: v.price || 0,
-        stock: v.stock || 0,
-        barcode: v.barcode || "",
-        imageVariant: v.imageVariant || "",
-      })),
+      variants: output.variants.flatMap((v: any) =>
+        v.sub_variants.length > 0
+          ? v.sub_variants.map((s: any) => ({
+              size: v.size || "",
+              color: s.color || "",
+              material: s.material || "",
+              price: s.price || 0,
+              stock: s.stock || 0,
+              barcode: s.sku || "",
+              imageVariant: s.imageVariant || "",
+            }))
+          : [
+              {
+                size: v.size || "",
+                color: v.color || "",
+                material: v.material || "",
+                price: v.price || 0,
+                stock: v.stock || 0,
+                barcode: v.barcode || "",
+                imageVariant: v.imageVariant || "",
+              },
+            ]
+      ),
 
       // TODO: Add uploaded images later
       mediaUrls: [],

@@ -48,22 +48,42 @@ export async function POST(req: Request) {
     // Create Variants
     // ---------------------
     if (payload.variants?.length) {
+      const flatVariants = [];
+
+      for (const v of payload.variants) {
+        // parent variant (size only group)
+        if (!v.sub_variants?.length) {
+          flatVariants.push({
+            slug: uuidv4(),
+            productId: product.id,
+            size: v.size ?? "",
+            color: v.color ?? "",
+            material: v.material ?? "",
+            price: v.price ?? 0,
+            stock: v.stock ?? 0,
+            imageVariant: v.imageVariant ?? "",
+            barcode: v.barcode ?? "",
+          });
+        } else {
+          // sub variants (full combinations)
+          for (const sub of v.sub_variants) {
+            flatVariants.push({
+              slug: uuidv4(),
+              productId: product.id,
+              size: v.size ?? "", // keep parent size
+              color: sub.color ?? "",
+              material: sub.material ?? "",
+              price: sub.price ?? 0,
+              stock: sub.stock ?? 0,
+              imageVariant: sub.imageVariant ?? "",
+              barcode: sub.sku ?? "",
+            });
+          }
+        }
+      }
+
       await prisma.variant.createMany({
-        data: payload.variants.map((v: any) => ({
-          slug: uuidv4(),
-          productId: product.id,
-
-          size: v.size ?? "",
-          color: v.color ?? "",
-          material: v.material ?? "",
-
-          price: v.price ?? 0,
-          stock: v.stock ?? 0,
-          imageVariant: v.imageVariant ?? "",
-          barcode: v.barcode ?? "",
-
-          // Sub-variants must be created separately
-        })),
+        data: flatVariants,
       });
     }
 
