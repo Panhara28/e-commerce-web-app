@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -14,52 +14,119 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "../ui/input";
+import { Input } from "@/components/ui/input";
 
-const categories = [
-  "Animals & Pet Supplies",
-  "Apparel & Accessories",
-  "Arts & Entertainment",
-  "Baby & Toddler",
-  "Business & Industrial",
-  "Cameras & Optics",
-  "Electronics",
-  "Food, Beverages & Tobacco",
-  "Furniture",
-  "Hardware",
-  "Health & Personal Care",
-  "Home & Garden",
-  "Industrial & Scientific",
-  "Jewelry",
-  "Luggage",
-  "Musical Instruments",
-  "Office Products",
-  "Outdoor Recreation",
-  "Software",
-  "Sporting Goods",
-  "Tools & Home Improvement",
-  "Toys & Games",
+// =============================
+// CATEGORY DATA (recursive)
+// =============================
+type Category = {
+  name: string;
+  children?: Category[];
+};
+
+const categories: Category[] = [
+  {
+    name: "Animals & Pet Supplies",
+    children: [
+      {
+        name: "Live Animals",
+        children: [
+          { name: "Dogs" },
+          { name: "Cats" },
+          { name: "Rabbits" },
+        ],
+      },
+      {
+        name: "Pet Supplies",
+        children: [
+          { name: "Pet Food" },
+          { name: "Pet Toys" },
+          { name: "Accessories" },
+        ],
+      },
+    ],
+  },
+  {
+    name: "Electronics",
+    children: [
+      {
+        name: "Mobile Phones",
+        children: [
+          { name: "Smartphones" },
+          { name: "Feature Phones" },
+        ],
+      },
+      {
+        name: "Computers",
+        children: [
+          { name: "Laptops" },
+          { name: "Desktops" },
+        ],
+      },
+    ],
+  },
 ];
 
 export function SelectCategory() {
   const [open, setOpen] = React.useState(false);
+
+  // full selected path (breadcrumb)
+  const [path, setPath] = React.useState<string[]>([]);
+
+  // current category list shown in popover
+  const [currentList, setCurrentList] =
+    React.useState<Category[]>(categories);
+
+  // input text
   const [value, setValue] = React.useState("");
+
+  // when selecting a category
+  const handleSelect = (category: Category) => {
+    if (category.children && category.children.length > 0) {
+      // go deeper
+      setPath((prev) => [...prev, category.name]);
+      setCurrentList(category.children);
+    } else {
+      // leaf reached → final
+      const fullPath = [...path, category.name].join(" > ");
+      setValue(fullPath);
+
+      // close
+      setOpen(false);
+
+      // reset to root for next time
+      setPath([]);
+      setCurrentList(categories);
+    }
+  };
+
+  // go back one level
+  const goBack = () => {
+    const newPath = [...path];
+    newPath.pop();
+
+    // find the new category list
+    let list = categories;
+    newPath.forEach((name) => {
+      const found = list.find((c) => c.name === name);
+      list = found?.children ?? [];
+    });
+
+    setPath(newPath);
+    setCurrentList(list.length ? list : categories);
+  };
 
   return (
     <div className="w-full max-w-2xl space-y-2">
       <Popover open={open} onOpenChange={setOpen}>
-        {/* ⭐ WRAPPER DIV — becomes the trigger (NOT the Input itself) */}
         <PopoverTrigger asChild>
           <div className="w-full">
             <Input
               value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                setOpen(true);
-              }}
               onClick={() => setOpen(true)}
               placeholder="Choose a product category"
-              className="shadow-none border border-black"
+              readOnly
+              className="shadow-none border border-black cursor-pointer"
             />
           </div>
         </PopoverTrigger>
@@ -75,21 +142,35 @@ export function SelectCategory() {
               <CommandEmpty>No category found.</CommandEmpty>
 
               <CommandGroup>
-                {categories
-                  .filter((c) => c.toLowerCase().includes(value.toLowerCase()))
-                  .map((c) => (
-                    <CommandItem
-                      key={c}
-                      onSelect={() => {
-                        setValue(c);
-                        setOpen(false);
-                      }}
-                      className="flex items-center justify-between cursor-pointer hover:bg-accent"
+                {/* Breadcrumb Header */}
+                {path.length > 0 && (
+                  <div className="flex items-center px-3 py-2 border-b bg-muted/40 text-sm">
+                    <button
+                      onClick={goBack}
+                      className="mr-2"
                     >
-                      <span>{c}</span>
-                      <ChevronRight className="h-4 w-4 opacity-50" />
-                    </CommandItem>
-                  ))}
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="font-medium">
+                      {path.join(" > ")}
+                    </span>
+                  </div>
+                )}
+
+                {/* Current list of categories */}
+                {currentList.map((c) => (
+                  <CommandItem
+                    key={c.name}
+                    onSelect={() => handleSelect(c)}
+                    className="flex items-center justify-between cursor-pointer"
+                  >
+                    {c.name}
+
+                    {c.children && c.children.length > 0 && (
+                      <ChevronRight className="h-4 w-4 opacity-60" />
+                    )}
+                  </CommandItem>
+                ))}
               </CommandGroup>
             </CommandList>
           </Command>
