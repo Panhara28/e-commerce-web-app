@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, PackageOpen, Image } from "lucide-react";
+import { ChevronDown, ChevronUp, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "../ui/checkbox";
 

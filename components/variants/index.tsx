@@ -69,7 +69,10 @@ interface VariantGroup {
 
 // --------------------- Component ---------------------
 export default function Variants() {
+  const [mediaFiles, setMediaFiles] = useState<any[]>([]);
   const [showAdditional, setShowAdditional] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+
   const [groups, setGroups] = useState<VariantGroup[]>([
     {
       id: "M",
@@ -376,7 +379,6 @@ export default function Variants() {
       title: title.trim(),
       description: description ? description : {},
 
-
       categoryId: parseInt(categoryId),
       productCode: productCode?.trim() || "",
       status: status || "DRAFT",
@@ -413,7 +415,9 @@ export default function Variants() {
       ),
 
       // TODO: Add uploaded images later
-      mediaUrls: [],
+      mediaUrls: mediaFiles.map((m) => ({
+        url: m.url,
+      })),
     };
 
     try {
@@ -446,6 +450,8 @@ export default function Variants() {
         localStorage.removeItem(STRUCTURE_KEY);
         setOutput({ variants: [] });
         setVariants([]);
+        setMediaFiles([]);
+        setResetKey(Date.now());
       } else {
         console.error("❌ API Error:", data);
         alert(data.message || "Failed to create product!");
@@ -478,6 +484,7 @@ export default function Variants() {
               <div className="px-5">
                 <h6 className="text-sm py-1">Description</h6>
                 <RichText
+                  key={resetKey}
                   value={productForm.description}
                   onChange={(val) =>
                     setProductForm({ ...productForm, description: val })
@@ -486,7 +493,7 @@ export default function Variants() {
               </div>
               <div className="px-5">
                 <h6 className="text-sm py-1">Media</h6>
-                <MediaUpload />
+                <MediaUpload value={mediaFiles} onChange={setMediaFiles} />
               </div>
               <div className="flex flex-wrap">
                 <div className="px-5 w-1/2">

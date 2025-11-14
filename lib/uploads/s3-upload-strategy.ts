@@ -7,16 +7,17 @@ export class S3UploadStrategy {
   private s3: S3Client;
   private bucket: string;
   private region: string;
-  private cdn: string;
+  private endpoint: string;
 
   constructor() {
     this.region = process.env.SPACES_REGION || "sgp1";
     this.bucket = process.env.SPACES_BUCKET!;
-    this.cdn = process.env.SPACES_CDN || "cdn.digitaloceanspaces.com";
+    this.endpoint = process.env.SPACES_ENDPOINT!;
+    // example ENV: https://sgp1.digitaloceanspaces.com
 
     this.s3 = new S3Client({
       region: this.region,
-      endpoint: process.env.SPACES_ENDPOINT, // example: https://sgp1.digitaloceanspaces.com
+      endpoint: this.endpoint,
       credentials: {
         accessKeyId: process.env.SPACES_KEY!,
         secretAccessKey: process.env.SPACES_SECRET!,
@@ -24,11 +25,6 @@ export class S3UploadStrategy {
     });
   }
 
-  /**
-   * Upload file to DigitalOcean Spaces
-   * @param folder the folder inside bucket
-   * @param file {originalname, mimetype, buffer, size}
-   */
   async upload(
     folder: string,
     file: {
@@ -52,8 +48,8 @@ export class S3UploadStrategy {
 
     await this.s3.send(command);
 
-    // 👉 Public URL for the image
-    const url = `https://${this.bucket}.${this.region}.${this.cdn}/${key}`;
+    // ALWAYS ORIGIN URL — NEVER CDN
+    const url = `https://${this.bucket}.${this.region}.digitaloceanspaces.com/${key}`;
 
     return {
       storage: "spaces",
@@ -61,7 +57,7 @@ export class S3UploadStrategy {
       originalName: file.originalname,
       size: file.size,
       mimetype: file.mimetype,
-      url,
+      url, // <— always correct origin format
     };
   }
 }
