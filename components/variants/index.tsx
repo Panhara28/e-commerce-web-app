@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { SelectCategory } from "../select-category";
 
 // --------------------- Types ---------------------
 type SubVariant = {
@@ -498,7 +499,8 @@ export default function Variants() {
               <div className="flex flex-wrap">
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Category</h6>
-                  <Select
+                  <SelectCategory />
+                  {/* <Select
                     value={productForm.categoryId}
                     onValueChange={(val) =>
                       setProductForm({ ...productForm, categoryId: val })
@@ -514,7 +516,7 @@ export default function Variants() {
                         <SelectItem value="3">Accessories</SelectItem>
                       </SelectGroup>
                     </SelectContent>
-                  </Select>
+                  </Select> */}
                 </div>
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Product code</h6>
