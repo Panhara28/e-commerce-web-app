@@ -98,9 +98,29 @@ export function SelectCategory() {
   // ⭐ Restore active path on open
   const handleOpen = (state: boolean) => {
     setOpen(state);
-    if (state && selectedPath.length > 0) {
-      setPath(selectedPath.slice(0, -1));
-      setCurrentList(getCategoryListFromPath(selectedPath.slice(0, -1)));
+
+    if (!state) return;
+
+    if (selectedPath.length > 0) {
+      let list = categories;
+
+      // Walk through full selected path
+      for (const name of selectedPath) {
+        const found = list.find((c) => c.name === name);
+        if (!found) break;
+
+        if (found.children && found.children.length > 0) {
+          list = found.children; // keep moving down
+        } else {
+          break; // leaf reached → stop
+        }
+      }
+
+      // ⭐ Always restore the full path (not sliced)
+      setPath(selectedPath);
+
+      // ⭐ Show children of selected parent
+      setCurrentList(list);
     }
   };
 
@@ -108,14 +128,30 @@ export function SelectCategory() {
     <div className="w-full max-w-2xl space-y-2">
       <Popover open={open} onOpenChange={handleOpen}>
         <PopoverTrigger asChild>
-          <div className="w-full">
+          <div className="w-full relative">
             <Input
               value={value}
               readOnly
               onClick={() => handleOpen(true)}
               placeholder="Choose category"
-              className="shadow-none border border-black cursor-pointer"
+              className="shadow-none border border-black cursor-pointer pr-10"
             />
+
+            {value && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setValue("");
+                  setSelectedPath([]);
+                  setPath([]);
+                  setCurrentList(categories);
+                  setOpen(false);
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </PopoverTrigger>
 
@@ -127,7 +163,6 @@ export function SelectCategory() {
         >
           <Command shouldFilter={false}>
             <CommandList>
-
               <CommandEmpty>No category found.</CommandEmpty>
 
               <CommandGroup>
@@ -137,9 +172,7 @@ export function SelectCategory() {
                     <button onClick={goBack} className="mr-2">
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <span className="font-medium">
-                      {path.join(" > ")}
-                    </span>
+                    <span className="font-medium">{path.join(" > ")}</span>
                   </div>
                 )}
 
@@ -188,7 +221,6 @@ export function SelectCategory() {
                   );
                 })}
               </CommandGroup>
-
             </CommandList>
           </Command>
         </PopoverContent>
