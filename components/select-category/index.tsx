@@ -27,18 +27,11 @@ const categories: Category[] = [
     children: [
       {
         name: "Live Animals",
-        children: [
-          { name: "Dogs" },
-          { name: "Cats" },
-          { name: "Rabbits" },
-        ],
+        children: [{ name: "Dogs" }, { name: "Cats" }],
       },
       {
         name: "Pet Supplies",
-        children: [
-          { name: "Pet Food" },
-          { name: "Pet Toys" },
-        ],
+        children: [{ name: "Pet Food" }, { name: "Pet Toys" }],
       },
     ],
   },
@@ -47,10 +40,7 @@ const categories: Category[] = [
     children: [
       {
         name: "Mobile Phones",
-        children: [
-          { name: "Smartphones" },
-          { name: "Feature Phones" },
-        ],
+        children: [{ name: "Smartphones" }],
       },
     ],
   },
@@ -64,7 +54,6 @@ export function SelectCategory() {
   const [value, setValue] = React.useState("");
   const [selectedPath, setSelectedPath] = React.useState<string[]>([]);
 
-  // Navigate categories by path
   const getCategoryListFromPath = (pathArray: string[]) => {
     let list = categories;
     for (const name of pathArray) {
@@ -75,16 +64,28 @@ export function SelectCategory() {
     return list;
   };
 
-  const handleSelect = (category: Category) => {
+  // ⭐ Select parent or leaf
+  const selectCategory = (category: Category) => {
+    const fullPath = [...path, category.name];
+
+    setSelectedPath(fullPath);
+    setValue(fullPath.join(" > "));
+
     if (category.children && category.children.length > 0) {
-      setPath((prev) => [...prev, category.name]);
+      // Parent selectable + show children
+      setPath(fullPath);
       setCurrentList(category.children);
-    } else {
-      const fullPath = [...path, category.name];
-      setSelectedPath(fullPath);
-      setValue(fullPath.join(" > "));
-      setOpen(false);
+      return;
     }
+
+    // Leaf → close popover
+    setOpen(false);
+  };
+
+  // ⭐ Drill down only
+  const drillDown = (category: Category) => {
+    setPath((prev) => [...prev, category.name]);
+    setCurrentList(category.children || []);
   };
 
   const goBack = () => {
@@ -94,15 +95,12 @@ export function SelectCategory() {
     setCurrentList(getCategoryListFromPath(newPath));
   };
 
-  // ⭐ When opening, restore the last selected path
+  // ⭐ Restore active path on open
   const handleOpen = (state: boolean) => {
     setOpen(state);
     if (state && selectedPath.length > 0) {
       setPath(selectedPath.slice(0, -1));
       setCurrentList(getCategoryListFromPath(selectedPath.slice(0, -1)));
-    }
-    if (!state) {
-      // Do not reset on close — keep selection
     }
   };
 
@@ -113,9 +111,9 @@ export function SelectCategory() {
           <div className="w-full">
             <Input
               value={value}
-              onClick={() => handleOpen(true)}
-              placeholder="Choose a product category"
               readOnly
+              onClick={() => handleOpen(true)}
+              placeholder="Choose category"
               className="shadow-none border border-black cursor-pointer"
             />
           </div>
@@ -129,6 +127,7 @@ export function SelectCategory() {
         >
           <Command shouldFilter={false}>
             <CommandList>
+
               <CommandEmpty>No category found.</CommandEmpty>
 
               <CommandGroup>
@@ -138,32 +137,58 @@ export function SelectCategory() {
                     <button onClick={goBack} className="mr-2">
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <span className="font-medium">{path.join(" > ")}</span>
+                    <span className="font-medium">
+                      {path.join(" > ")}
+                    </span>
                   </div>
                 )}
 
-                {/* List Items */}
-                {currentList.map((c) => {
-                  const isActive =
-                    selectedPath[selectedPath.length - 1] === c.name;
+                {currentList.map((category) => {
+                  const levelIndex = path.length; // current depth
+                  const isActiveLevel =
+                    selectedPath[levelIndex] === category.name;
+
+                  const hasChildren =
+                    category.children && category.children.length > 0;
+
+                  const isFinalSelected =
+                    selectedPath[selectedPath.length - 1] === category.name;
 
                   return (
                     <CommandItem
-                      key={c.name}
-                      onSelect={() => handleSelect(c)}
-                      className="flex items-center justify-between cursor-pointer"
+                      key={category.name}
+                      className={`flex items-center justify-between cursor-pointer ${
+                        isActiveLevel ? "bg-accent/50" : ""
+                      }`}
                     >
-                      <span>{c.name}</span>
+                      {/* Select parent/leaf */}
+                      <div
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectCategory(category);
+                        }}
+                      >
+                        {category.name}
+                      </div>
 
-                      {c.children && c.children.length > 0 ? (
-                        <ChevronRight className="h-4 w-4 opacity-60" />
-                      ) : isActive ? (
-                        <Check className="h-4 w-4 text-green-600" />
+                      {/* Drill-down arrow OR check mark */}
+                      {hasChildren ? (
+                        <ChevronRight
+                          className="h-4 w-4 opacity-60 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            drillDown(category);
+                          }}
+                        />
+                      ) : isFinalSelected ? (
+                        <Check className="h-4 w-4 text-green-500" />
                       ) : null}
                     </CommandItem>
                   );
                 })}
               </CommandGroup>
+
             </CommandList>
           </Command>
         </PopoverContent>
