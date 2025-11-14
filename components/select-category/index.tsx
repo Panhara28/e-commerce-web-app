@@ -48,79 +48,67 @@ const categories: Category[] = [
 
 export function SelectCategory() {
   const [open, setOpen] = React.useState(false);
-  const [path, setPath] = React.useState<string[]>([]);
-  const [currentList, setCurrentList] = React.useState<Category[]>(categories);
 
-  const [value, setValue] = React.useState("");
+  // ► path = browser navigation ONLY
+  const [path, setPath] = React.useState<string[]>([]);
+
+  // ► selectedPath = FINAL chosen category
   const [selectedPath, setSelectedPath] = React.useState<string[]>([]);
 
-  const getCategoryListFromPath = (pathArray: string[]) => {
+  const [currentList, setCurrentList] = React.useState<Category[]>(categories);
+  const [value, setValue] = React.useState("");
+
+  const getListFromExactPath = (pathArray: string[]) => {
     let list = categories;
     for (const name of pathArray) {
       const found = list.find((c) => c.name === name);
-      if (!found?.children) return list;
-      list = found.children;
+      if (!found) return categories;
+      list = found.children ?? [];
     }
     return list;
   };
 
-  // ⭐ Select parent or leaf
+  // ⭐ FIXED SELECT LOGIC
   const selectCategory = (category: Category) => {
-    const fullPath = [...path, category.name];
+    const fullPath = [...path, category.name]; // build from browsing path
 
+    // Save final selection
     setSelectedPath(fullPath);
     setValue(fullPath.join(" > "));
 
     if (category.children && category.children.length > 0) {
-      // Parent selectable + show children
+      // Parent selected → browse deeper, DO NOT close
       setPath(fullPath);
       setCurrentList(category.children);
       return;
     }
 
-    // Leaf → close popover
+    // Leaf selected → close
     setOpen(false);
   };
 
-  // ⭐ Drill down only
   const drillDown = (category: Category) => {
-    setPath((prev) => [...prev, category.name]);
-    setCurrentList(category.children || []);
+    const newPath = [...path, category.name];
+    setPath(newPath);
+    setCurrentList(category.children ?? []);
   };
 
   const goBack = () => {
     const newPath = [...path];
     newPath.pop();
     setPath(newPath);
-    setCurrentList(getCategoryListFromPath(newPath));
+    setCurrentList(getListFromExactPath(newPath));
   };
 
-  // ⭐ Restore active path on open
   const handleOpen = (state: boolean) => {
     setOpen(state);
 
     if (!state) return;
 
     if (selectedPath.length > 0) {
-      let list = categories;
-
-      // Walk through full selected path
-      for (const name of selectedPath) {
-        const found = list.find((c) => c.name === name);
-        if (!found) break;
-
-        if (found.children && found.children.length > 0) {
-          list = found.children; // keep moving down
-        } else {
-          break; // leaf reached → stop
-        }
-      }
-
-      // ⭐ Always restore the full path (not sliced)
+      // Restore browsing to selectedPath
       setPath(selectedPath);
-
-      // ⭐ Show children of selected parent
-      setCurrentList(list);
+      setCurrentList(getListFromExactPath(selectedPath));
     }
   };
 
@@ -137,6 +125,7 @@ export function SelectCategory() {
               className="shadow-none border border-black cursor-pointer pr-10"
             />
 
+            {/* X CLEAR ICON */}
             {value && (
               <button
                 onClick={(e) => {
@@ -145,7 +134,6 @@ export function SelectCategory() {
                   setSelectedPath([]);
                   setPath([]);
                   setCurrentList(categories);
-                  setOpen(false);
                 }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black"
               >
@@ -163,8 +151,6 @@ export function SelectCategory() {
         >
           <Command shouldFilter={false}>
             <CommandList>
-              <CommandEmpty>No category found.</CommandEmpty>
-
               <CommandGroup>
                 {/* Breadcrumb */}
                 {path.length > 0 && (
@@ -176,25 +162,27 @@ export function SelectCategory() {
                   </div>
                 )}
 
+                {/* LIST ITEMS */}
                 {currentList.map((category) => {
-                  const levelIndex = path.length; // current depth
-                  const isActiveLevel =
-                    selectedPath[levelIndex] === category.name;
+                  const levelIndex = path.length;
 
-                  const hasChildren =
-                    category.children && category.children.length > 0;
+                  const isActive =
+                    path[levelIndex] === category.name ||
+                    selectedPath[levelIndex] === category.name;
 
                   const isFinalSelected =
                     selectedPath[selectedPath.length - 1] === category.name;
+
+                  const hasChildren =
+                    category.children && category.children.length > 0;
 
                   return (
                     <CommandItem
                       key={category.name}
                       className={`flex items-center justify-between cursor-pointer ${
-                        isActiveLevel ? "bg-accent/50" : ""
+                        isActive ? "bg-accent/60" : ""
                       }`}
                     >
-                      {/* Select parent/leaf */}
                       <div
                         className="flex-1"
                         onClick={(e) => {
@@ -205,7 +193,6 @@ export function SelectCategory() {
                         {category.name}
                       </div>
 
-                      {/* Drill-down arrow OR check mark */}
                       {hasChildren ? (
                         <ChevronRight
                           className="h-4 w-4 opacity-60 cursor-pointer"
