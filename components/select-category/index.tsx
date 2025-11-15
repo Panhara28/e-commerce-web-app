@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import { ChevronRight, ChevronLeft, Check } from "lucide-react";
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandItem,
   CommandList,
@@ -15,80 +15,88 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { useCategories } from "@/hooks/useCategories";
 
-type Category = {
-  name: string;
-  children?: Category[];
-};
+export function SelectCategory({
+  onSelect,
+  resetSignal,
+}: {
+  onSelect: (id: number) => void;
+  resetSignal?: number;
+}) {
+  const { categories, loading } = useCategories();
 
-const categories: Category[] = [
-  {
-    name: "Animals & Pet Supplies",
-    children: [
-      {
-        name: "Live Animals",
-        children: [{ name: "Dogs" }, { name: "Cats" }],
-      },
-      {
-        name: "Pet Supplies",
-        children: [{ name: "Pet Food" }, { name: "Pet Toys" }],
-      },
-    ],
-  },
-  {
-    name: "Electronics",
-    children: [
-      {
-        name: "Mobile Phones",
-        children: [{ name: "Smartphones" }],
-      },
-    ],
-  },
-];
-
-export function SelectCategory() {
   const [open, setOpen] = React.useState(false);
-
-  // ► path = browser navigation ONLY
-  const [path, setPath] = React.useState<string[]>([]);
-
-  // ► selectedPath = FINAL chosen category
-  const [selectedPath, setSelectedPath] = React.useState<string[]>([]);
-
-  const [currentList, setCurrentList] = React.useState<Category[]>(categories);
+  const [path, setPath] = React.useState<any[]>([]);
+  const [selectedPath, setSelectedPath] = React.useState<any[]>([]);
+  const [currentList, setCurrentList] = React.useState<any[]>([]);
   const [value, setValue] = React.useState("");
 
-  const getListFromExactPath = (pathArray: string[]) => {
+  // -------------------------------
+  // Load initial categories
+  // -------------------------------
+  React.useEffect(() => {
+    if (!loading && categories.length > 0) {
+      setCurrentList(categories);
+    }
+  }, [loading, categories]);
+
+  // -------------------------------
+  // Reset handler from parent
+  // -------------------------------
+  React.useEffect(() => {
+    if (!resetSignal) return;
+
+    setValue("");
+    setSelectedPath([]);
+    setPath([]);
+    setCurrentList(categories);
+    setOpen(false);
+  }, [resetSignal, categories]);
+
+  // -------------------------------
+  // Helpers
+  // -------------------------------
+  const getListFromPath = (pathArr: any[]) => {
     let list = categories;
-    for (const name of pathArray) {
-      const found = list.find((c) => c.name === name);
+
+    for (const node of pathArr) {
+      const found = list.find((c) => c.id === node.id);
       if (!found) return categories;
       list = found.children ?? [];
     }
+
     return list;
   };
 
-  // ⭐ FIXED SELECT LOGIC
-  const selectCategory = (category: Category) => {
-    const fullPath = [...path, category.name]; // build from browsing path
+  // -------------------------------
+  // FIXED: SAFE selection logic
+  // -------------------------------
+  const selectCategory = (category: any) => {
+    const parentPath = selectedPath.slice(0, path.length);
+    const fullPath = [...parentPath, category];
 
-    // Save final selection
     setSelectedPath(fullPath);
-    setValue(fullPath.join(" > "));
+    setValue(fullPath.map((p) => p.name).join(" > "));
 
-    if (category.children && category.children.length > 0) {
-      // Parent selected → browse deeper, DO NOT close
+    // 🔥 FIX: Prevent cross-render state update
+    startTransition(() => {
+      onSelect(category.id);
+    });
+
+    // If category has children → continue drilldown
+    if (category.children?.length > 0) {
       setPath(fullPath);
       setCurrentList(category.children);
       return;
     }
 
-    // Leaf selected → close
+    // If leaf → close popover
     setOpen(false);
   };
 
-  const drillDown = (category: Category) => {
-    const newPath = [...path, category.name];
+  const drillDown = (category: any) => {
+    const newPath = [...path, category];
     setPath(newPath);
     setCurrentList(category.children ?? []);
   };
@@ -97,20 +105,26 @@ export function SelectCategory() {
     const newPath = [...path];
     newPath.pop();
     setPath(newPath);
-    setCurrentList(getListFromExactPath(newPath));
+    setCurrentList(getListFromPath(newPath));
   };
 
   const handleOpen = (state: boolean) => {
     setOpen(state);
-
     if (!state) return;
 
+    // Restore the browsing level when opening again
     if (selectedPath.length > 0) {
-      // Restore browsing to selectedPath
       setPath(selectedPath);
-      setCurrentList(getListFromExactPath(selectedPath));
+      setCurrentList(getListFromPath(selectedPath));
     }
   };
+
+  // -------------------------------
+  // Render UI
+  // -------------------------------
+  if (loading) {
+    return <div>Loading categories...</div>;
+  }
 
   return (
     <div className="w-full max-w-2xl space-y-2">
@@ -125,7 +139,7 @@ export function SelectCategory() {
               className="shadow-none border border-black cursor-pointer pr-10"
             />
 
-            {/* X CLEAR ICON */}
+            {/* Clear button */}
             {value && (
               <button
                 onClick={(e) => {
@@ -158,27 +172,28 @@ export function SelectCategory() {
                     <button onClick={goBack} className="mr-2">
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <span className="font-medium">{path.join(" > ")}</span>
+                    <span className="font-medium">
+                      {path.map((p) => p.name).join(" > ")}
+                    </span>
                   </div>
                 )}
 
-                {/* LIST ITEMS */}
-                {currentList.map((category) => {
-                  const levelIndex = path.length;
+                {/* Category List */}
+                {currentList.map((category: any) => {
+                  const lvl = path.length;
 
                   const isActive =
-                    path[levelIndex] === category.name ||
-                    selectedPath[levelIndex] === category.name;
+                    path[lvl]?.id === category.id ||
+                    selectedPath[lvl]?.id === category.id;
 
                   const isFinalSelected =
-                    selectedPath[selectedPath.length - 1] === category.name;
+                    selectedPath[selectedPath.length - 1]?.id === category.id;
 
-                  const hasChildren =
-                    category.children && category.children.length > 0;
+                  const hasChildren = category.children?.length > 0;
 
                   return (
                     <CommandItem
-                      key={category.name}
+                      key={category.id}
                       className={`flex items-center justify-between cursor-pointer ${
                         isActive ? "bg-accent/60" : ""
                       }`}

@@ -39,7 +39,7 @@ export async function POST(req: Request) {
         discountHold: payload.discountHold ?? 0,
         salePricePremium: payload.salePricePremium ?? 0,
         discountPremium: payload.discountPremium ?? 0,
-
+        discount: payload.discount ?? 0,
         // Variants created later
       },
     });

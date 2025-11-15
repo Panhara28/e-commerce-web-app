@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { SelectCategory } from "../select-category";
+import { useCategories } from "@/hooks/useCategories";
 
 // --------------------- Types ---------------------
 type SubVariant = {
@@ -71,6 +72,8 @@ interface VariantGroup {
 // --------------------- Component ---------------------
 export default function Variants() {
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
+  const { setCategories } = useCategories();
+
   const [showAdditional, setShowAdditional] = useState(false);
   const [resetKey, setResetKey] = useState(0);
 
@@ -191,7 +194,7 @@ export default function Variants() {
     description: "",
     categoryId: "",
     productCode: "",
-    status: "",
+    status: "DRAFT",
     price: "",
     discount: "",
     salePriceHold: "",
@@ -389,7 +392,7 @@ export default function Variants() {
       discountHold: parseFloat(discountHold) || 0,
       salePricePremium: parseFloat(salePricePremium) || 0,
       discountPremium: parseFloat(discountPremium) || 0,
-
+      discount: parseInt(productForm.discount) || 0,
       // Variants generated from your variant system
       variants: output.variants.flatMap((v: any) =>
         v.sub_variants.length > 0
@@ -440,8 +443,9 @@ export default function Variants() {
           description: "",
           categoryId: "",
           productCode: "",
-          status: "",
+          status: "DRAFT",
           price: "",
+          discount: "",
           salePriceHold: "",
           discountHold: "",
           salePricePremium: "",
@@ -452,6 +456,7 @@ export default function Variants() {
         setOutput({ variants: [] });
         setVariants([]);
         setMediaFiles([]);
+        setCategories([]);
         setResetKey(Date.now());
       } else {
         console.error("❌ API Error:", data);
@@ -499,7 +504,12 @@ export default function Variants() {
               <div className="flex flex-wrap">
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Category</h6>
-                  <SelectCategory />
+                  <SelectCategory
+                    onSelect={(id) =>
+                      setProductForm({ ...productForm, categoryId: id })
+                    }
+                    resetSignal={resetKey}
+                  />
                   {/* <Select
                     value={productForm.categoryId}
                     onValueChange={(val) =>
@@ -555,6 +565,10 @@ export default function Variants() {
                     className="shadow-none border border-black"
                     type="number"
                     placeholder="$ 0.00"
+                    value={productForm.discount}
+                    onChange={(e) =>
+                      setProductForm({ ...productForm, discount: e.target.value })
+                    }
                   />
                 </div>
 
@@ -595,6 +609,13 @@ export default function Variants() {
                     className="shadow-none border border-black"
                     type="number"
                     placeholder="$ 0.00"
+                    value={productForm.salePricePremium}
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        salePricePremium: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="px-5 w-1/2">

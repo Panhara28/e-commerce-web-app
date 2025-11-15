@@ -124,7 +124,7 @@ model Product {
   discountHold        Float?                // Optional
   salePricePremium    Float?                // Optional
   discountPremium     Float?                // Optional
-
+  discount            Int?                // Optional
   variants            Variant[]
   MediaProductDetails MediaProductDetails[]
 
