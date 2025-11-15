@@ -45,7 +45,6 @@ export class S3UploadStrategy {
       ContentType: file.mimetype,
       ACL: "public-read",
     });
-
     await this.s3.send(command);
 
     // ALWAYS ORIGIN URL — NEVER CDN

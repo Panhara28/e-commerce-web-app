@@ -567,7 +567,10 @@ export default function Variants() {
                     placeholder="$ 0.00"
                     value={productForm.discount}
                     onChange={(e) =>
-                      setProductForm({ ...productForm, discount: e.target.value })
+                      setProductForm({
+                        ...productForm,
+                        discount: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -746,15 +749,7 @@ export default function Variants() {
                         </Button>
                       </CardFooter>
                     )}
-
-                    {/* 🧩 Variant Combination List */}
-                    {isGenerating && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Generating
-                        variants…
-                      </div>
-                    )}
-                    {!isGenerating && output.variants.length > 0 && (
+                    {output.variants.length > 0 && (
                       <VariantList
                         data={output}
                         onVariantsChange={(updated) => {
