@@ -4,15 +4,15 @@ import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, Image } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "../ui/checkbox";
-import MediaDialog from "../media-upload/media-dialog"; // <-- ADDED
+import MediaDialog from "../media-upload/media-dialog";
 
 type SubVariant = {
   color: string;
   material: string;
   price: number;
   stock: number;
-  sku?: string;
   imageVariant?: string;
+  barcode?: string;
 };
 
 type Variant = {
@@ -21,7 +21,7 @@ type Variant = {
   material?: string;
   price: number;
   stock: number;
-  sku?: string;
+  barcode?: string;
   imageVariant?: string;
   sub_variants: SubVariant[];
 };
@@ -35,7 +35,24 @@ export default function VariantList({ data, onVariantsChange }: Props) {
   const [variants, setVariants] = useState<Variant[]>(data.variants);
   const [expanded, setExpanded] = useState<number[]>([]);
 
-  // ------------------- IMAGE PICKER STATE (ADDED) -------------------
+  /* -------------------------------------------------------------------------- */
+  /* 🔥 FIXED: No hydration mismatch + prevent unwanted resets                  */
+  /* -------------------------------------------------------------------------- */
+  useEffect(() => {
+    try {
+      const current = JSON.stringify(variants);
+      const incoming = JSON.stringify(data.variants);
+
+      // Only update when the parent actually changed the data
+      if (current !== incoming) {
+        setVariants(data.variants);
+      }
+    } catch {
+      setVariants(data.variants);
+    }
+  }, [data.variants]);
+  /* -------------------------------------------------------------------------- */
+
   const [imagePicker, setImagePicker] = useState({
     open: false,
     vIndex: null as number | null,
@@ -73,12 +90,6 @@ export default function VariantList({ data, onVariantsChange }: Props) {
 
     setImagePicker({ open: false, vIndex: null, sIndex: null });
   };
-  // -------------------------------------------------------------------
-
-  useEffect(() => {
-    const id = setTimeout(() => setVariants(data.variants), 0);
-    return () => clearTimeout(id);
-  }, [data.variants]);
 
   const toggleExpand = (index: number) =>
     setExpanded((prev) =>
@@ -108,6 +119,7 @@ export default function VariantList({ data, onVariantsChange }: Props) {
     if (!realSubs) {
       if (sIndex === null) {
         (newVariants[vIndex] as any)[field] = parsed;
+
         newVariants[vIndex].sub_variants = newVariants[vIndex].sub_variants.map(
           (s) => ({ ...s, [field]: parsed })
         );
@@ -115,6 +127,7 @@ export default function VariantList({ data, onVariantsChange }: Props) {
     } else {
       if (sIndex === null) {
         (newVariants[vIndex] as any)[field] = parsed;
+
         if (isNumber) {
           newVariants[vIndex].sub_variants = newVariants[
             vIndex
@@ -124,6 +137,7 @@ export default function VariantList({ data, onVariantsChange }: Props) {
         const updatedSubs = newVariants[vIndex].sub_variants.map((sub, i) =>
           i === sIndex ? { ...sub, [field]: parsed } : sub
         );
+
         newVariants[vIndex].sub_variants = updatedSubs;
 
         if (field === "price") {
@@ -143,7 +157,9 @@ export default function VariantList({ data, onVariantsChange }: Props) {
     const prices = variant.sub_variants.map((s) => s.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
+
     if (!variant.sub_variants.length) return "$ 0.00";
+
     return min === max
       ? `$ ${min.toFixed(2)}`
       : `$ ${min.toFixed(2)} – ${max.toFixed(2)}`;
@@ -155,23 +171,32 @@ export default function VariantList({ data, onVariantsChange }: Props) {
         (s.color && s.color.trim().length > 0) ||
         (s.material && s.material.trim().length > 0)
     );
+
     if (!validSubs.length) return false;
 
     const uniqueCombos = new Set(
       validSubs.map(
         (s) =>
-          `${s.color?.trim().toLowerCase() || ""}-${
-            s.material?.trim().toLowerCase() || ""
-          }`
+          `${s.color?.trim().toLowerCase()}-${s.material?.trim().toLowerCase()}`
       )
     );
 
     return uniqueCombos.size >= 1;
   };
 
+  const selectedUrl =
+    imagePicker.vIndex !== null && imagePicker.sIndex === null
+      ? variants[imagePicker.vIndex]?.imageVariant
+      : imagePicker.vIndex !== null &&
+        imagePicker.sIndex !== null &&
+        variants[imagePicker.vIndex]?.sub_variants[imagePicker.sIndex]
+      ? variants[imagePicker.vIndex]?.sub_variants[imagePicker.sIndex]
+          ?.imageVariant
+      : null;
+
   return (
     <>
-      {/* ------------------- IMAGE DIALOG (ADDED, UI UNTOUCHED) ------------------- */}
+      {/* IMAGE PICKER DIALOG (UI unchanged) */}
       <MediaDialog
         open={imagePicker.open}
         onOpenChange={(v) =>
@@ -182,19 +207,11 @@ export default function VariantList({ data, onVariantsChange }: Props) {
         fetchMedia={fetchMedia}
         triggerFileUpload={() => {}}
         onSelect={applySelectedImage}
-        selectedUrl={
-          imagePicker.vIndex !== null
-            ? imagePicker.sIndex === null
-              ? variants[imagePicker.vIndex]?.imageVariant
-              : variants[imagePicker.vIndex]?.sub_variants[imagePicker.sIndex]
-                  ?.imageVariant
-            : null
-        }
+        selectedUrl={selectedUrl}
       />
-      {/* -------------------------------------------------------------------------- */}
 
+      {/* ORIGINAL UI BELOW — UNTOUCHED */}
       <div className="space-y-4">
-        {/* Header */}
         <div className="grid grid-cols-[auto_1fr_150px_150px_150px] border-t gap-4 px-6 py-4 border-b border-gray-200 text-sm font-medium text-gray-600">
           <div className="w-6">
             <Checkbox className="prevent-expand" />
@@ -220,12 +237,10 @@ export default function VariantList({ data, onVariantsChange }: Props) {
               key={vIndex}
               className="bg-white rounded-lg shadow border border-border/40"
             >
-              {/* Parent Row */}
               <div
                 className="grid grid-cols-[auto_1fr_150px_150px_150px] gap-4 px-6 py-4 items-center hover:bg-slate-50 cursor-pointer"
                 onClick={(e) => {
                   const target = e.target as HTMLElement;
-
                   if (
                     target.closest("input") ||
                     target.closest("button") ||
@@ -242,7 +257,7 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {/* ------------------- ADD IMAGE CLICK (NO UI CHANGE) ------------------- */}
+                  {/* IMAGE CLICK */}
                   <div
                     className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-white shrink-0 prevent-expand cursor-pointer"
                     onClick={(e) => {
@@ -260,7 +275,6 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                       <Image className="text-blue-600" />
                     )}
                   </div>
-                  {/* ------------------------------------------------------------------- */}
 
                   <div className="flex flex-col truncate">
                     <span className="text-base font-semibold text-gray-900">
@@ -286,9 +300,9 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                   type="text"
                   placeholder="Barcode"
                   className="border border-gray-300 prevent-expand"
-                  value={variant.sku ?? ""}
+                  value={variant.barcode ?? ""}
                   onChange={(e) =>
-                    handleChange(vIndex, null, "sku", e.target.value)
+                    handleChange(vIndex, null, "barcode", e.target.value)
                   }
                 />
 
@@ -313,7 +327,6 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                 />
               </div>
 
-              {/* Sub Variants */}
               {expandable && isExpanded && realSubs && (
                 <div className="bg-gray-50">
                   {variant.sub_variants.map((sub, sIndex) => (
@@ -326,7 +339,7 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        {/* ------------------- SUB IMAGE CLICK ------------------- */}
+                        {/* SUB VARIANT IMAGE */}
                         <div
                           className="w-12 h-12 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-white prevent-expand cursor-pointer"
                           onClick={(e) => {
@@ -344,7 +357,6 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                             <Image className="text-blue-600" />
                           )}
                         </div>
-                        {/* ------------------------------------------------------ */}
 
                         <span className="text-gray-900 text-sm">
                           {sub.color} {sub.material && "/"} {sub.material}
@@ -355,9 +367,14 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                         type="text"
                         placeholder="Barcode"
                         className="border border-gray-300 prevent-expand"
-                        value={sub.sku ?? ""}
+                        value={sub.barcode ?? ""}
                         onChange={(e) =>
-                          handleChange(vIndex, sIndex, "sku", e.target.value)
+                          handleChange(
+                            vIndex,
+                            sIndex,
+                            "barcode",
+                            e.target.value
+                          )
                         }
                       />
 

@@ -25,6 +25,8 @@ type SubVariant = {
   material: string;
   price: number;
   stock: number;
+  imageVariant?: string;
+  barcode?: string;
 };
 
 type Variant = {
@@ -34,10 +36,11 @@ type Variant = {
   material?: string;
   price?: number;
   stock?: number;
+  imageVariant?: string;
+  barcode?: string;
   sub_variants?: SubVariant[];
   name?: string;
   available?: number;
-  icon?: string;
 };
 
 type Product = {
@@ -52,24 +55,17 @@ type Product = {
   variants: Variant[];
   created_at: string;
 };
+
 interface Option {
   id: string;
   name: string;
   value: string;
   hasError: boolean;
 }
+
 const STRUCTURE_KEY = "variant_data_v1";
 const PRODUCT_KEY = "products_v1";
 
-interface VariantGroup {
-  id: string;
-  size: string;
-  variantCount: number;
-  isExpanded: boolean;
-  variants: Variant[];
-}
-
-// --------------------- Component ---------------------
 export default function Variants() {
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
   const { setCategories } = useCategories();
@@ -77,106 +73,15 @@ export default function Variants() {
   const [showAdditional, setShowAdditional] = useState(false);
   const [resetKey, setResetKey] = useState(0);
 
-  const [groups, setGroups] = useState<VariantGroup[]>([
-    {
-      id: "M",
-      size: "M",
-      variantCount: 4,
-      isExpanded: true,
-      variants: [
-        { id: "1", name: "Red / Rubby", price: 0.0, available: 0 },
-        { id: "2", name: "Red / Leather", price: 0.0, available: 0 },
-        { id: "3", name: "Black / Rubby", price: 0.0, available: 0 },
-        { id: "4", name: "Black / Leather", price: 0.0, available: 0 },
-      ],
-    },
-    {
-      id: "L",
-      size: "L",
-      variantCount: 4,
-      isExpanded: false,
-      variants: [
-        { id: "5", name: "Red / Rubby", price: 0.0, available: 0 },
-        { id: "6", name: "Red / Leather", price: 0.0, available: 0 },
-        { id: "7", name: "Black / Rubby", price: 0.0, available: 0 },
-        { id: "8", name: "Black / Leather", price: 0.0, available: 0 },
-      ],
-    },
-  ]);
-
-  const toggleGroup = (groupId: string) => {
-    setGroups(
-      groups.map((g) =>
-        g.id === groupId ? { ...g, isExpanded: !g.isExpanded } : g
-      )
-    );
-  };
-
-  const updateVariant = (
-    groupId: string,
-    variantId: string,
-    field: "price" | "available",
-    value: string | number
-  ) => {
-    setGroups(
-      groups.map((g) =>
-        g.id === groupId
-          ? {
-              ...g,
-              variants: g.variants.map((v) =>
-                v.id === variantId
-                  ? {
-                      ...v,
-                      [field]:
-                        field === "price"
-                          ? Number.parseFloat(value as string)
-                          : Number.parseInt(value as string),
-                    }
-                  : v
-              ),
-            }
-          : g
-      )
-    );
-  };
   const [options, setOptions] = useState<Option[]>([
     { id: "1", name: "Size", value: "Medium", hasError: true },
     { id: "2", name: "Color", value: "Black", hasError: true },
   ]);
 
-  const handleAddOption = () => {
-    const newOption: Option = {
-      id: Math.random().toString(),
-      name: "",
-      value: "",
-      hasError: false,
-    };
-    setOptions([...options, newOption]);
-  };
-
-  const handleDeleteOption = (id: string) => {
-    setOptions(options.filter((opt) => opt.id !== id));
-  };
-
-  const handleOptionNameChange = (id: string, newName: string) => {
-    setOptions(
-      options.map((opt) =>
-        opt.id === id
-          ? { ...opt, name: newName, hasError: newName === "" }
-          : opt
-      )
-    );
-  };
-
-  const handleOptionValueChange = (id: string, newValue: string) => {
-    setOptions(
-      options.map((opt) => (opt.id === id ? { ...opt, value: newValue } : opt))
-    );
-  };
-  const toggleAdditional = () => setShowAdditional((prev) => !prev);
   const [variants, setVariants] = useState<
     { name: string; values: string[] }[]
   >([]);
+
   const [output, setOutput] = useState<{ variants: Variant[] }>(() => {
     try {
       const raw = localStorage.getItem(STRUCTURE_KEY);
@@ -188,7 +93,7 @@ export default function Variants() {
 
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // ✅ Product fields
+  // PRODUCT FIELDS
   const [productForm, setProductForm]: any = useState({
     title: "",
     description: "",
@@ -216,7 +121,7 @@ export default function Variants() {
     return "Enter option value";
   };
 
-  // ------------------------- Manage Variant Options -------------------------
+  // ------------------------- Variant Builder Logic -------------------------
   const handleAddVariant = () => {
     if (variants.length < defaultVariants.length) {
       setVariants((prev) => [...prev, { name: "", values: [""] }]);
@@ -257,7 +162,7 @@ export default function Variants() {
       })
     );
 
-  // ------------------------- Generate Variants -------------------------
+  // ------------------------- Generate Variant Output -------------------------
   const generatedOutput = useMemo(() => {
     const active = variants
       .filter((v) => v.name.trim() && v.values.some((val) => val.trim()))
@@ -269,9 +174,7 @@ export default function Variants() {
     if (active.length === 0) return { variants: [] };
 
     const combine = (arrs: string[][]) =>
-      arrs.reduce((a, b) => a.flatMap((x) => b.map((y) => [...x, y])), [
-        [],
-      ] as string[][]);
+      arrs.reduce((a, b) => a.flatMap((x) => b.map((y) => [...x, y])), [[]]);
 
     const combos = combine(active.map((x) => x.values));
 
@@ -303,17 +206,20 @@ export default function Variants() {
 
     const grouped = uniquePrimary.map((val) => {
       const children = result.filter((r) => getPrimaryValue(r) === val);
+
       return {
         size: primaryKey.includes("size") ? val : "",
         color: primaryKey.includes("color") ? val : "",
         material: primaryKey.includes("material") ? val : "",
         price: 0,
         stock: 0,
+        imageVariant: "",
         sub_variants: children.map((r) => ({
           color: r.color || "",
           material: r.material || "",
           price: 0,
           stock: 0,
+          imageVariant: "",
         })),
       };
     });
@@ -321,9 +227,10 @@ export default function Variants() {
     return { variants: grouped };
   }, [variants]);
 
-  // ------------------------- Sync to localStorage -------------------------
+  // ------------------------- MERGE FIX HERE (the only fix) -------------------------
   useEffect(() => {
     startTransition(() => setIsGenerating(true));
+
     const t = setTimeout(() => {
       setOutput((prev) => {
         const merged = generatedOutput.variants.map((v) => {
@@ -333,31 +240,45 @@ export default function Variants() {
               o.color === v.color &&
               o.material === v.material
           );
+
           if (existing) {
-            const mergedSubs = v.sub_variants.map((s, i) => ({
-              ...s,
-              price: existing.sub_variants![i]?.price ?? s.price,
-              stock: existing.sub_variants![i]?.stock ?? s.stock,
-            }));
+            const mergedSubs = v.sub_variants!.map((s, i) => {
+              const prevSub = existing.sub_variants?.[i] || {};
+
+              return {
+                ...s,
+                price: prevSub.price ?? s.price,
+                stock: prevSub.stock ?? s.stock,
+                barcode: prevSub.barcode ?? s.barcode ?? "",
+                imageVariant: prevSub.imageVariant ?? s.imageVariant ?? "",
+              };
+            });
+
             return {
               ...v,
-              price: existing.price,
-              stock: existing.stock,
+              price: existing.price ?? v.price ?? 0,
+              stock: existing.stock ?? v.stock ?? 0,
+              barcode: existing.barcode ?? v.barcode ?? "",
+              imageVariant: existing.imageVariant ?? v.imageVariant ?? "",
               sub_variants: mergedSubs,
             };
           }
+
           return v;
         });
+
         const updated = { variants: merged };
         persistStructure(updated);
         return updated;
       });
+
       setIsGenerating(false);
     }, 200);
+
     return () => clearTimeout(t);
   }, [generatedOutput]);
 
-  // ------------------------- Save Product (Connected to API) -------------------------
+  // ------------------------- Save Product -------------------------
   const handleSaveProduct = async () => {
     const {
       title,
@@ -372,28 +293,24 @@ export default function Variants() {
       discountPremium,
     } = productForm;
 
-    // Validate required fields
     if (!title || !price || !categoryId) {
       alert("⚠️ Please fill all required product fields!");
       return;
     }
 
-    // ✅ Build product payload EXACTLY matching API
     const productPayload = {
       title: title.trim(),
       description: description ? description : {},
-
       categoryId: parseInt(categoryId),
       productCode: productCode?.trim() || "",
       status: status || "DRAFT",
-
       price: parseFloat(price) || 0,
       salePriceHold: parseFloat(salePriceHold) || 0,
       discountHold: parseFloat(discountHold) || 0,
       salePricePremium: parseFloat(salePricePremium) || 0,
       discountPremium: parseFloat(discountPremium) || 0,
       discount: parseInt(productForm.discount) || 0,
-      // Variants generated from your variant system
+
       variants: output.variants.flatMap((v: any) =>
         v.sub_variants.length > 0
           ? v.sub_variants.map((s: any) => ({
@@ -402,7 +319,7 @@ export default function Variants() {
               material: s.material || "",
               price: s.price || 0,
               stock: s.stock || 0,
-              barcode: s.sku || "",
+              barcode: s.barcode || "",
               imageVariant: s.imageVariant || "",
             }))
           : [
@@ -418,14 +335,12 @@ export default function Variants() {
             ]
       ),
 
-      // TODO: Add uploaded images later
       mediaUrls: mediaFiles.map((m) => ({
         url: m.url,
       })),
     };
 
     try {
-      // Call your API
       const response = await fetch("/api/products/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -437,7 +352,6 @@ export default function Variants() {
       if (response.ok && data.status === "ok") {
         alert(`✅ ${data.message}`);
 
-        // Reset form + variant data
         setProductForm({
           title: "",
           description: "",
@@ -459,11 +373,9 @@ export default function Variants() {
         setCategories([]);
         setResetKey(Date.now());
       } else {
-        console.error("❌ API Error:", data);
         alert(data.message || "Failed to create product!");
       }
     } catch (error) {
-      console.error("❌ Request Error:", error);
       alert("Network error while creating product!");
     }
   };
@@ -487,6 +399,7 @@ export default function Variants() {
                   }
                 />
               </div>
+
               <div className="px-5">
                 <h6 className="text-sm py-1">Description</h6>
                 <RichText
@@ -497,11 +410,14 @@ export default function Variants() {
                   }
                 />
               </div>
+
               <div className="px-5">
                 <h6 className="text-sm py-1">Media</h6>
                 <MediaUpload value={mediaFiles} onChange={setMediaFiles} />
               </div>
+
               <div className="flex flex-wrap">
+                {/* Category */}
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Category</h6>
                   <SelectCategory
@@ -510,24 +426,9 @@ export default function Variants() {
                     }
                     resetSignal={resetKey}
                   />
-                  {/* <Select
-                    value={productForm.categoryId}
-                    onValueChange={(val) =>
-                      setProductForm({ ...productForm, categoryId: val })
-                    }
-                  >
-                    <SelectTrigger className="w-[100%] shadow-none border border-black">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="1">Clothes</SelectItem>
-                        <SelectItem value="2">Shoes</SelectItem>
-                        <SelectItem value="3">Accessories</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select> */}
                 </div>
+
+                {/* Product Code */}
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Product code</h6>
                   <Input
@@ -545,6 +446,8 @@ export default function Variants() {
                 </div>
               </div>
             </Card>
+
+            {/* Prices */}
             <Card className="shadow-none border rounded-lg my-3">
               <div className="flex flex-wrap">
                 <div className="px-5 w-1/2 mb-4">
@@ -559,6 +462,7 @@ export default function Variants() {
                     placeholder="$ 0.00"
                   />
                 </div>
+
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Discount</h6>
                   <Input
@@ -575,7 +479,7 @@ export default function Variants() {
                   />
                 </div>
 
-                <div className="px-5 w-1/2  mb-4">
+                <div className="px-5 w-1/2 mb-4">
                   <h6 className="text-sm py-1">Sale Price For Hold Sale ($)</h6>
                   <Input
                     className="shadow-none border border-black"
@@ -590,6 +494,7 @@ export default function Variants() {
                     placeholder="$ 0.00"
                   />
                 </div>
+
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Discount Hold Sale (%)</h6>
                   <Input
@@ -621,6 +526,7 @@ export default function Variants() {
                     }
                   />
                 </div>
+
                 <div className="px-5 w-1/2">
                   <h6 className="text-sm py-1">Discount Premium (%)</h6>
                   <Input
@@ -639,30 +545,27 @@ export default function Variants() {
               </div>
             </Card>
 
+            {/* Variant Builder */}
             <Card>
               <div className="px-5">
                 <h6 className="text-sm py-1 font-bold">Variant</h6>
               </div>
+
               <div className="flex justify-center">
-                {/* 🧩 Variant Builder Section - NEW UI INTERFACE */}
                 <div className="w-full mx-5 rounded-lg border border-border bg-card p-6">
                   <div className="space-y-6">
-                    {/* --- Variant Options UI (Size, Color, Material) --- */}
                     {variants.map((variant, i) => (
                       <div key={i} className="space-y-4">
                         <div className="flex items-start gap-3">
-                          {/* Drag Handle */}
                           <div className="mt-3 cursor-grab active:cursor-grabbing">
                             <Grip2 className="h-5 w-5 text-muted-foreground" />
                           </div>
 
                           <div className="flex-1 space-y-2">
-                            {/* Label */}
                             <label className="text-sm font-medium text-foreground">
                               Option name
                             </label>
 
-                            {/* Option Name Input (OLD LOGIC) */}
                             <Input
                               className="border-border"
                               placeholder={defaultVariants[i] || "Option name"}
@@ -672,12 +575,10 @@ export default function Variants() {
                               }
                             />
 
-                            {/* Values Label */}
                             <label className="mt-4 block text-sm font-medium text-foreground">
                               Option values
                             </label>
 
-                            {/* Option Values Inputs (OLD LOGIC FULLY APPLIED) */}
                             {variant.values.map((val, j) => (
                               <div
                                 key={j}
@@ -694,7 +595,6 @@ export default function Variants() {
                                   }
                                 />
 
-                                {/* Delete Value button (ONLY IF NOT EMPTY — OLD LOGIC) */}
                                 {val.trim() && (
                                   <Button
                                     variant="ghost"
@@ -708,7 +608,6 @@ export default function Variants() {
                               </div>
                             ))}
 
-                            {/* Action Buttons (OLD LOGIC: delete entire option) */}
                             <div className="flex items-center justify-between gap-2 pt-2">
                               <Button
                                 variant="ghost"
@@ -730,14 +629,12 @@ export default function Variants() {
                           </div>
                         </div>
 
-                        {/* Divider */}
                         {i !== variants.length - 1 && (
                           <hr className="border-border" />
                         )}
                       </div>
                     ))}
 
-                    {/* Add Another Option (OLD LOGIC) */}
                     {variants.length < defaultVariants.length && (
                       <CardFooter className="px-0">
                         <Button
@@ -749,6 +646,7 @@ export default function Variants() {
                         </Button>
                       </CardFooter>
                     )}
+
                     {output.variants.length > 0 && (
                       <VariantList
                         data={output}
@@ -765,10 +663,12 @@ export default function Variants() {
             </Card>
           </div>
 
+          {/* Right Column */}
           <div className="w-1/3 rounded-lg">
             <Card className="shadow-none border rounded-lg">
               <div className="px-5">
                 <h6 className="text-sm py-1">Status</h6>
+
                 <Select
                   value={productForm.status}
                   onValueChange={(val) =>
@@ -788,6 +688,7 @@ export default function Variants() {
                 </Select>
               </div>
             </Card>
+
             <div className="flex mt-4 justify-end">
               <Button className="w-full" onClick={handleSaveProduct}>
                 Save
