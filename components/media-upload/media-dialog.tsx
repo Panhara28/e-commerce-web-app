@@ -29,12 +29,14 @@ export default function MediaDialog({
         if (v) fetchMedia();
       }}
     >
-      <DialogContent className=" w-[55vw] max-w-[55vw] !sm:max-w-[55vw] !max-w-[55vw] max-h-[85vh] overflow-hidden  mt-[1vh] mb-[1vh] rounded-xl p-0 ">
+      <DialogContent className=" w-[55vw] max-w-[55vw] !sm:max-w-[55vw] !max-w-[55vw] max-h-[85vh] overflow-hidden mt-[1vh] mb-[1vh] rounded-xl p-0 ">
         <div className="flex flex-col max-h-[85vh] overflow-hidden">
+          {/* Header */}
           <DialogHeader className="px-6 pt-6 pb-3">
             <DialogTitle>Select file</DialogTitle>
           </DialogHeader>
 
+          {/* Search + Filters */}
           <div className="px-6 flex items-center gap-3 pb-4">
             <Input placeholder="Search files" className="flex-1" />
 
@@ -51,6 +53,7 @@ export default function MediaDialog({
             </Button>
           </div>
 
+          {/* Upload inside modal */}
           <div className="px-6 pb-4">
             <div className="border border-dashed rounded-lg py-6 flex flex-col items-center">
               <Button
@@ -67,6 +70,7 @@ export default function MediaDialog({
             </div>
           </div>
 
+          {/* Media List */}
           <div className="px-6 pb-6 overflow-y-auto max-h-[45vh] no-scrollbar">
             {loading ? (
               <p className="text-center py-10 text-gray-500">Loading...</p>
@@ -109,6 +113,7 @@ export default function MediaDialog({
             )}
           </div>
 
+          {/* Footer */}
           <DialogFooter className="px-6 pb-6">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
