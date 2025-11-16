@@ -20,9 +20,11 @@ import { useCategories } from "@/hooks/useCategories";
 export function SelectCategory({
   onSelect,
   resetSignal,
+  defaultValue,
 }: {
   onSelect: (id: number) => void;
   resetSignal?: number;
+  defaultValue?: number; // ⭐ Added
 }) {
   const { categories, loading } = useCategories();
 
@@ -32,18 +34,48 @@ export function SelectCategory({
   const [currentList, setCurrentList] = React.useState<any[]>([]);
   const [value, setValue] = React.useState("");
 
-  // -------------------------------
-  // Load initial categories
-  // -------------------------------
+  /* ---------------------------------------------
+     Load initial category tree
+  --------------------------------------------- */
   React.useEffect(() => {
     if (!loading && categories.length > 0) {
       setCurrentList(categories);
     }
   }, [loading, categories]);
 
-  // -------------------------------
-  // Reset handler from parent
-  // -------------------------------
+  /* ---------------------------------------------
+     ⭐ AUTO-SELECT DEFAULT CATEGORY ON EDIT
+  --------------------------------------------- */
+  React.useEffect(() => {
+    if (!defaultValue || loading || categories.length === 0) return;
+
+    const findPath = (cats: any[], id: number, chain: any[] = []): any[] | null => {
+      for (const c of cats) {
+        if (c.id === id) return [...chain, c];
+        if (c.children?.length) {
+          const res = findPath(c.children, id, [...chain, c]);
+          if (res) return res;
+        }
+      }
+      return null;
+    };
+
+    const fullChain = findPath(categories, defaultValue);
+
+    if (fullChain) {
+      setSelectedPath(fullChain);
+      setPath(fullChain.slice(0, -1)); // drilldown until parent
+      setCurrentList(fullChain.at(-1)?.children ?? []);
+      setValue(fullChain.map((c) => c.name).join(" > "));
+
+      // notify parent
+      startTransition(() => onSelect(defaultValue));
+    }
+  }, [defaultValue, categories, loading]);
+
+  /* ---------------------------------------------
+     Reset from parent
+  --------------------------------------------- */
   React.useEffect(() => {
     if (!resetSignal) return;
 
@@ -54,9 +86,9 @@ export function SelectCategory({
     setOpen(false);
   }, [resetSignal, categories]);
 
-  // -------------------------------
-  // Helpers
-  // -------------------------------
+  /* ---------------------------------------------
+     Helpers
+  --------------------------------------------- */
   const getListFromPath = (pathArr: any[]) => {
     let list = categories;
 
@@ -69,9 +101,9 @@ export function SelectCategory({
     return list;
   };
 
-  // -------------------------------
-  // FIXED: SAFE selection logic
-  // -------------------------------
+  /* ---------------------------------------------
+     Select Category
+  --------------------------------------------- */
   const selectCategory = (category: any) => {
     const parentPath = selectedPath.slice(0, path.length);
     const fullPath = [...parentPath, category];
@@ -79,19 +111,14 @@ export function SelectCategory({
     setSelectedPath(fullPath);
     setValue(fullPath.map((p) => p.name).join(" > "));
 
-    // 🔥 FIX: Prevent cross-render state update
-    startTransition(() => {
-      onSelect(category.id);
-    });
+    startTransition(() => onSelect(category.id));
 
-    // If category has children → continue drilldown
     if (category.children?.length > 0) {
       setPath(fullPath);
       setCurrentList(category.children);
       return;
     }
 
-    // If leaf → close popover
     setOpen(false);
   };
 
@@ -112,19 +139,17 @@ export function SelectCategory({
     setOpen(state);
     if (!state) return;
 
-    // Restore the browsing level when opening again
     if (selectedPath.length > 0) {
-      setPath(selectedPath);
-      setCurrentList(getListFromPath(selectedPath));
+      setPath(selectedPath.slice(0, -1));
+      setCurrentList(getListFromPath(selectedPath.slice(0, -1)));
     }
   };
 
-  // -------------------------------
-  // Render UI
-  // -------------------------------
-  if (loading) {
-    return <div>Loading categories...</div>;
-  }
+  /* ---------------------------------------------
+     RENDER
+  --------------------------------------------- */
+
+  if (loading) return <div>Loading categories...</div>;
 
   return (
     <div className="w-full max-w-2xl space-y-2">
@@ -139,7 +164,6 @@ export function SelectCategory({
               className="shadow-none border border-black cursor-pointer pr-10"
             />
 
-            {/* Clear button */}
             {value && (
               <button
                 onClick={(e) => {
@@ -166,7 +190,6 @@ export function SelectCategory({
           <Command shouldFilter={false}>
             <CommandList>
               <CommandGroup>
-                {/* Breadcrumb */}
                 {path.length > 0 && (
                   <div className="flex items-center px-3 py-2 border-b bg-muted/40 text-sm">
                     <button onClick={goBack} className="mr-2">
@@ -178,25 +201,16 @@ export function SelectCategory({
                   </div>
                 )}
 
-                {/* Category List */}
                 {currentList.map((category: any) => {
-                  const lvl = path.length;
-
-                  const isActive =
-                    path[lvl]?.id === category.id ||
-                    selectedPath[lvl]?.id === category.id;
-
-                  const isFinalSelected =
+                  const level = path.length;
+                  const isSelected =
                     selectedPath[selectedPath.length - 1]?.id === category.id;
-
                   const hasChildren = category.children?.length > 0;
 
                   return (
                     <CommandItem
                       key={category.id}
-                      className={`flex items-center justify-between cursor-pointer ${
-                        isActive ? "bg-accent/60" : ""
-                      }`}
+                      className="flex items-center justify-between cursor-pointer"
                     >
                       <div
                         className="flex-1"
@@ -216,7 +230,7 @@ export function SelectCategory({
                             drillDown(category);
                           }}
                         />
-                      ) : isFinalSelected ? (
+                      ) : isSelected ? (
                         <Check className="h-4 w-4 text-green-500" />
                       ) : null}
                     </CommandItem>

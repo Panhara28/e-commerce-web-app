@@ -4,12 +4,12 @@ import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient();
 
-export async function PUT(
+export async function PATCH(
   req: Request,
   context: { params: Promise<{ slug: string }> }
 ) {
-    const { slug } = await context.params; // 👈 FIX HERE
-    const params = { slug };
+  const { slug } = await context.params; // 👈 FIX HERE
+  const params = { slug };
   try {
     const productSlug = params.slug;
     const payload = await req.json();
@@ -47,16 +47,16 @@ export async function PUT(
       where: { slug: productSlug },
       data: {
         title: payload.title,
+
+        // ✅ Save HTML + text exactly as provided
         description: payload.description ?? {},
         categoryId: payload.categoryId ? Number(payload.categoryId) : null,
 
         productCode: payload.productCode || null,
         status: payload.status || "DRAFT",
 
-        // Prices
         price: payload.price ?? 0,
 
-        // Additional UI Pricing
         salePriceHold: payload.salePriceHold ?? 0,
         discountHold: payload.discountHold ?? 0,
         salePricePremium: payload.salePricePremium ?? 0,

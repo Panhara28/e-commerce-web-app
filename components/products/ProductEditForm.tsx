@@ -2,13 +2,7 @@
 
 import { useState, useEffect, useMemo, startTransition } from "react";
 import { useParams } from "next/navigation";
-import {
-  Loader2,
-  X,
-  Grip as Grip2,
-  Trash2,
-  Plus,
-} from "lucide-react";
+import { Loader2, X, Grip as Grip2, Trash2, Plus } from "lucide-react";
 
 import { Card, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +20,7 @@ import {
 import { SelectCategory } from "../select-category";
 import { useCategories } from "@/hooks/useCategories";
 import VariantList from "../variants/variant-list";
+import { lexicalJSONtoHTML } from "@/utlis/convertLexical";
 
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
@@ -61,7 +56,7 @@ const STRUCTURE_KEY = "variant_data_v1";
 export default function ProductEditForm() {
   const params = useParams();
   const slug = params?.slug as string;
- console.log(slug)
+  console.log(slug);
   const { setCategories } = useCategories();
 
   const [loading, setLoading] = useState(true);
@@ -70,9 +65,9 @@ export default function ProductEditForm() {
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
   const [resetKey, setResetKey] = useState(0);
 
-  const [variants, setVariants] = useState<{ name: string; values: string[] }[]>(
-    []
-  );
+  const [variants, setVariants] = useState<
+    { name: string; values: string[] }[]
+  >([]);
 
   const [output, setOutput] = useState<{ variants: Variant[] }>({
     variants: [],
@@ -82,7 +77,7 @@ export default function ProductEditForm() {
 
   const [productForm, setProductForm]: any = useState({
     title: "",
-    description: "",
+    description: null,
     categoryId: "",
     productCode: "",
     status: "DRAFT",
@@ -117,11 +112,12 @@ export default function ProductEditForm() {
       const json = await res.json();
 
       const p = json.data;
+      const preparedDescription = await lexicalJSONtoHTML(p.description);
 
       /* -------------------- PRODUCT FORM -------------------- */
       setProductForm({
         title: p.title,
-        description: p.description ?? {},
+        description: preparedDescription ?? {},
         categoryId: p.categoryId,
         productCode: p.productCode || "",
         status: p.status,
@@ -161,18 +157,19 @@ export default function ProductEditForm() {
   /* -------------------------------------------------------------------------- */
 
   const convertFlatVariants = (flat: any[]): Variant[] => {
-    if (!flat || flat.length === 0) return [];
+    if (!flat?.length) return [];
 
-    const grouped: Record<string, Variant> = {};
+    // Group by SIZE (or first option)
+    const groups: Record<string, Variant> = {};
 
     for (const v of flat) {
-      const key = v.size || v.color || v.material || "";
+      const primary = v.size || v.color || v.material || "";
 
-      if (!grouped[key]) {
-        grouped[key] = {
+      if (!groups[primary]) {
+        groups[primary] = {
           size: v.size || "",
-          color: v.size ? "" : v.color,
-          material: v.material || "",
+          color: "",
+          material: "",
           price: v.price,
           stock: v.stock,
           barcode: v.barcode,
@@ -181,26 +178,28 @@ export default function ProductEditForm() {
         };
       }
 
-      if (v.color || v.material) {
-        grouped[key].sub_variants!.push({
-          color: v.color || "",
-          material: v.material || "",
-          price: v.price,
-          stock: v.stock,
-          barcode: v.barcode,
-          imageVariant: v.imageVariant || "",
-        });
-      }
+      groups[primary].sub_variants.push({
+        color: v.color,
+        material: v.material,
+        price: v.price,
+        stock: v.stock,
+        barcode: v.barcode,
+        imageVariant: v.imageVariant,
+      });
     }
 
-    // Parent should have empty sub_variants if single-variant
-    Object.values(grouped).forEach((g) => {
-      if (g.sub_variants!.length === 0) {
-        g.sub_variants = [];
+    // Parent inherits first child
+    Object.values(groups).forEach((g) => {
+      if (g.sub_variants.length > 0) {
+        const first = g.sub_variants[0];
+        g.imageVariant = first.imageVariant;
+        g.price = first.price;
+        g.stock = first.stock;
+        g.barcode = first.barcode;
       }
     });
 
-    return Object.values(grouped);
+    return Object.values(groups);
   };
 
   /* -------------------------------------------------------------------------- */
@@ -221,14 +220,10 @@ export default function ProductEditForm() {
     });
 
     return [
-      ...(sizes.size
-        ? [{ name: "Size", values: [...sizes] }]
-        : []),
-      ...(colors.size
-        ? [{ name: "Color", values: [...colors] }]
-        : []),
+      ...(sizes.size ? [{ name: "Size", values: [...sizes, ""] }] : []),
+      ...(colors.size ? [{ name: "Color", values: [...colors, ""] }] : []),
       ...(materials.size
-        ? [{ name: "Material", values: [...materials] }]
+        ? [{ name: "Material", values: [...materials, ""] }]
         : []),
     ];
   };
@@ -325,7 +320,8 @@ export default function ProductEditForm() {
               const prevSub = existing.sub_variants?.[i] || {};
 
               return {
-                ...s,
+                color: s.color,
+                material: s.material,
                 price: prevSub.price ?? s.price,
                 stock: prevSub.stock ?? s.stock,
                 barcode: prevSub.barcode ?? s.barcode ?? "",
@@ -335,10 +331,17 @@ export default function ProductEditForm() {
 
             return {
               ...v,
+
+              /* 🟢 Preserve database values */
+              id: existing.id,
+              slug: existing.slug,
+              productId: existing.productId,
+
               price: existing.price ?? v.price ?? 0,
               stock: existing.stock ?? v.stock ?? 0,
               barcode: existing.barcode ?? v.barcode ?? "",
               imageVariant: existing.imageVariant ?? v.imageVariant ?? "",
+
               sub_variants: mergedSubs,
             };
           }
@@ -410,8 +413,8 @@ export default function ProductEditForm() {
     };
 
     try {
-      const response = await fetch(`/api/products/${slug}`, {
-        method: "PUT",
+      const response = await fetch(`/api/products/${slug}/edit`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -446,7 +449,6 @@ export default function ProductEditForm() {
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
-
   return (
     <>
       <div className="container mx-auto">
@@ -469,13 +471,15 @@ export default function ProductEditForm() {
 
               <div className="px-5">
                 <h6 className="text-sm py-1">Description</h6>
-                <RichText
-                  key={resetKey}
-                  value={productForm.description}
-                  onChange={(val) =>
-                    setProductForm({ ...productForm, description: val })
-                  }
-                />
+                {productForm.description !== null && (
+                  <RichText
+                    key={resetKey}
+                    value={productForm.description}
+                    onChange={(val) =>
+                      setProductForm((prev) => ({ ...prev, description: val }))
+                    }
+                  />
+                )}
               </div>
 
               <div className="px-5">
@@ -678,9 +682,9 @@ export default function ProductEditForm() {
                                     className="text-destructive hover:bg-destructive/10"
                                     onClick={() => {
                                       const updated = [...variants];
-                                      updated[i].values = updated[i].values.filter(
-                                        (_, idx) => idx !== j
-                                      );
+                                      updated[i].values = updated[
+                                        i
+                                      ].values.filter((_, idx) => idx !== j);
                                       if (updated[i].values.length === 0)
                                         updated[i].values.push("");
 
