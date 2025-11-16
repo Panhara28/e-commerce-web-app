@@ -78,10 +78,21 @@ export default function VariantList({ data, onVariantsChange }: Props) {
     const { vIndex, sIndex } = imagePicker;
 
     if (vIndex !== null) {
+      const parent = updated[vIndex];
+
       if (sIndex === null) {
-        updated[vIndex].imageVariant = file.url;
+        // Parent selected image → assign to all children
+        parent.imageVariant = file.url;
+        parent.sub_variants = parent.sub_variants.map((s) => ({
+          ...s,
+          imageVariant: file.url,
+        }));
       } else {
-        updated[vIndex].sub_variants[sIndex].imageVariant = file.url;
+        // Child selected image
+        parent.sub_variants[sIndex].imageVariant = file.url;
+
+        // Parent should now show stacked images, not placeholder
+        parent.imageVariant = null; // force parent UI to use stacked thumbnails
       }
     }
 
@@ -271,6 +282,24 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                         src={variant.imageVariant}
                         className="w-full h-full object-cover rounded-xl"
                       />
+                    ) : variant.sub_variants.some((s) => s.imageVariant) ? (
+                      <div className="relative w-full h-full">
+                        {variant.sub_variants
+                          .filter((s) => s.imageVariant)
+                          .slice(0, 3) // max 3 stacked
+                          .map((s, i) => (
+                            <img
+                              key={i}
+                              src={s.imageVariant}
+                              className={`
+            absolute w-10 h-10 object-cover rounded-lg border-2 border-white
+            ${i === 0 ? "top-1 left-1" : ""}
+            ${i === 1 ? "top-1 right-1" : ""}
+            ${i === 2 ? "bottom-1 left-1" : ""}
+          `}
+                            />
+                          ))}
+                      </div>
                     ) : (
                       <Image className="text-blue-600" />
                     )}
