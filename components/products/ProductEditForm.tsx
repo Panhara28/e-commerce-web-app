@@ -20,7 +20,11 @@ import {
 import { SelectCategory } from "../select-category";
 import { useCategories } from "@/hooks/useCategories";
 import VariantList from "../variants/variant-list";
-import { lexicalJSONtoHTML } from "@/utlis/convertLexical";
+import {
+  convertHTMLtoLexicalJSON,
+  defaultEmptyLexicalState,
+  lexicalJSONtoHTML,
+} from "@/utlis/convertLexical";
 
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
@@ -112,12 +116,27 @@ export default function ProductEditForm() {
       const json = await res.json();
 
       const p = json.data;
-      const preparedDescription = await lexicalJSONtoHTML(p.description);
+      let descriptionJSON;
 
+      // CASE 1: Already JSON in DB
+      if (p.description?.root) {
+        descriptionJSON = p.description;
+      }
+      // CASE 2: Old HTML (first version before editor implemented)
+      else if (p.description?.html) {
+        // Convert HTML → JSON once
+        descriptionJSON = convertHTMLtoLexicalJSON(p.description.html);
+      }
+      // CASE 3: Empty
+      else {
+        descriptionJSON = defaultEmptyLexicalState();
+      }
+
+      console.log("🟦 [LOADED PRODUCT] description:", descriptionJSON); // 🔥 Trace #1
       /* -------------------- PRODUCT FORM -------------------- */
       setProductForm({
         title: p.title,
-        description: preparedDescription ?? {},
+        description: descriptionJSON,
         categoryId: p.categoryId,
         productCode: p.productCode || "",
         status: p.status,
@@ -374,7 +393,7 @@ export default function ProductEditForm() {
 
     const payload = {
       title: p.title.trim(),
-      description: p.description || {},
+      description: productForm.description,
       categoryId: Number(p.categoryId),
       productCode: p.productCode || "",
       status: p.status,
@@ -411,6 +430,7 @@ export default function ProductEditForm() {
 
       mediaUrls: mediaFiles.map((m) => ({ url: m.url })),
     };
+    console.log("🟥 [API PAYLOAD] description:", p.description); // 🔥 Trace #3
 
     try {
       const response = await fetch(`/api/products/${slug}/edit`, {
@@ -473,11 +493,10 @@ export default function ProductEditForm() {
                 <h6 className="text-sm py-1">Description</h6>
                 {productForm.description !== null && (
                   <RichText
-                    key={resetKey}
-                    value={productForm.description}
-                    onChange={(val) =>
-                      setProductForm((prev) => ({ ...prev, description: val }))
-                    }
+                    initialValue={productForm.description}
+                    onChange={(val) => {
+                      productForm.description = val; // do NOT cause re-render
+                    }}
                   />
                 )}
               </div>
