@@ -277,32 +277,52 @@ export default function VariantList({ data, onVariantsChange }: Props) {
                       fetchMedia();
                     }}
                   >
-                    {variant.imageVariant ? (
-                      <img
-                        src={variant.imageVariant}
-                        className="w-full h-full object-cover rounded-xl"
-                      />
-                    ) : variant.sub_variants.some((s) => s.imageVariant) ? (
-                      <div className="relative w-full h-full">
-                        {variant.sub_variants
-                          .filter((s) => s.imageVariant)
-                          .slice(0, 3) // max 3 stacked
-                          .map((s, i) => (
-                            <img
-                              key={i}
-                              src={s.imageVariant}
-                              className={`
-            absolute w-10 h-10 object-cover rounded-lg border-2 border-white
-            ${i === 0 ? "top-1 left-1" : ""}
-            ${i === 1 ? "top-1 right-1" : ""}
-            ${i === 2 ? "bottom-1 left-1" : ""}
-          `}
-                            />
-                          ))}
-                      </div>
-                    ) : (
-                      <Image className="text-blue-600" />
-                    )}
+                    {/* 🟦 NEW PARENT IMAGE LOGIC */}
+                    {(() => {
+                      const child = getChildImageState(variant);
+
+                      // CASE 1: Parent has a manually selected image → always show it
+                      if (variant.imageVariant && !child.mixed) {
+                        return (
+                          <img
+                            src={variant.imageVariant}
+                            className="w-full h-full object-cover rounded-xl"
+                          />
+                        );
+                      }
+
+                      // CASE 2: Children have mixed images → show stacked thumbnails
+                      if (child.hasImages && child.mixed) {
+                        return (
+                          <div className="relative w-full h-full">
+                            {child.urls.slice(0, 3).map((url, i) => (
+                              <img
+                                key={i}
+                                src={url}
+                                className={`absolute w-10 h-10 object-cover rounded-lg border-2 border-white
+              ${i === 0 ? "top-1 left-1" : ""}
+              ${i === 1 ? "top-1 right-1" : ""}
+              ${i === 2 ? "bottom-1 left-1" : ""}
+            `}
+                              />
+                            ))}
+                          </div>
+                        );
+                      }
+
+                      // CASE 3: Children have same image → show the first image
+                      if (child.hasImages && !child.mixed) {
+                        return (
+                          <img
+                            src={child.urls[0]}
+                            className="w-full h-full object-cover rounded-xl"
+                          />
+                        );
+                      }
+
+                      // CASE 4: No image at all → placeholder
+                      return <Image className="text-blue-600" />;
+                    })()}
                   </div>
 
                   <div className="flex flex-col truncate">
@@ -437,3 +457,19 @@ export default function VariantList({ data, onVariantsChange }: Props) {
     </>
   );
 }
+
+const getChildImageState = (variant: Variant) => {
+  const imgs = variant.sub_variants
+    .map((s) => s.imageVariant)
+    .filter((u) => u && u.trim() !== "");
+
+  if (imgs.length === 0) return { hasImages: false, mixed: false, urls: [] };
+
+  const unique = Array.from(new Set(imgs));
+
+  return {
+    hasImages: true,
+    mixed: unique.length > 1,
+    urls: unique,
+  };
+};
