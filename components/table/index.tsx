@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
+
 import {
-  Table,
+  Table as ShadTable,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -18,68 +20,80 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+
 import { Button } from "@/components/ui/button";
+
 import { Eye, Edit, Trash2 } from "lucide-react";
 
-type FilterType = "input" | "select";
+/* --------------------------------------------------------
+   TYPES
+-------------------------------------------------------- */
+export type FilterType = "input" | "select";
 
-type FilterConfig = {
+export interface FilterConfig {
   key: string;
   label?: string;
   type: FilterType;
   placeholder?: string;
   options?: string[];
-};
+}
 
-type DynamicTableProps = {
+export interface DynamicTableProps {
   data: Record<string, unknown>[];
   columns: string[];
+
   filters?: FilterConfig[];
-  pageSize?: number;
+
+  pageSize: number;
+  total: number;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+
+  onFiltersChange: (filters: Record<string, unknown>) => void;
+
   onView?: (row: Record<string, unknown>) => void;
   onEdit?: (row: Record<string, unknown>) => void;
   onDelete?: (row: Record<string, unknown>) => void;
-};
+}
 
+/* --------------------------------------------------------
+   COMPONENT
+-------------------------------------------------------- */
 export default function DynamicTable({
   data,
   columns,
   filters = [],
-  pageSize = 10,
+  pageSize,
+  total,
+  currentPage,
+  onPageChange,
+  onFiltersChange,
   onView,
   onEdit,
   onDelete,
 }: DynamicTableProps) {
-  const [currentPage, setCurrentPage] = useState(1);
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
-  // --- Filtering logic ---
-  const filteredData = useMemo(() => {
-    return data.filter((row) =>
-      filters.every((filter) => {
-        const value = filterValues[filter.key];
-        if (!value) return true;
-        return String(row[filter.key])
-          .toLowerCase()
-          .includes(value.toLowerCase());
-      })
-    );
-  }, [data, filters, filterValues]);
-
-  // --- Pagination logic ---
-  const totalPages = Math.ceil(filteredData.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
-
-  // --- Handle filter changes ---
+  /* --------------------------------------------------------
+     HANDLE FILTER CHANGE
+  -------------------------------------------------------- */
   const handleFilterChange = (key: string, value: string) => {
-    setFilterValues((prev) => ({ ...prev, [key]: value }));
-    setCurrentPage(1);
+    const updated = { ...filterValues, [key]: value };
+
+    setFilterValues(updated);
+
+    // Tell parent
+    onFiltersChange(updated);
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  /* --------------------------------------------------------
+     RENDER
+  -------------------------------------------------------- */
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* ---------------------- FILTERS ---------------------- */}
       {filters.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {filters.map((filter) => (
@@ -87,14 +101,15 @@ export default function DynamicTable({
               <label className="text-sm text-muted-foreground mb-1">
                 {filter.label || filter.key}
               </label>
+
               {filter.type === "input" ? (
                 <Input
-                  placeholder={filter.placeholder || `Filter by ${filter.key}`}
+                  placeholder={filter.placeholder}
+                  className="w-48"
                   value={filterValues[filter.key] || ""}
                   onChange={(e) =>
                     handleFilterChange(filter.key, e.target.value)
                   }
-                  className="w-48"
                 />
               ) : (
                 <Select
@@ -104,10 +119,9 @@ export default function DynamicTable({
                   }
                 >
                   <SelectTrigger className="w-48">
-                    <SelectValue
-                      placeholder={filter.placeholder || `Select ${filter.key}`}
-                    />
+                    <SelectValue placeholder={filter.placeholder} />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectItem value="__all__">All</SelectItem>
                     {filter.options?.map((opt) => (
@@ -123,9 +137,9 @@ export default function DynamicTable({
         </div>
       )}
 
-      {/* Table */}
+      {/* ---------------------- TABLE ---------------------- */}
       <div className="border rounded-lg overflow-hidden">
-        <Table>
+        <ShadTable>
           <TableHeader>
             <TableRow>
               {columns.map((col) => (
@@ -136,8 +150,9 @@ export default function DynamicTable({
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
-            {paginatedData.length === 0 ? (
+            {data.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length + 1}
@@ -147,13 +162,15 @@ export default function DynamicTable({
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedData.map((row: Record<string, unknown>, i) => (
-                <TableRow key={i}>
+              data.map((row, index) => (
+                <TableRow key={String(row.id) || index}>
                   {columns.map((col) => (
                     <TableCell key={col}>{String(row[col] ?? "")}</TableCell>
                   ))}
+
+                  {/* ACTION BUTTONS */}
                   <TableCell className="flex justify-end gap-2">
-                    {/* View → /products/[slug] */}
+                    {/* View */}
                     <Link href={`/products/${row.slug}`} passHref>
                       <Button
                         variant="ghost"
@@ -164,7 +181,7 @@ export default function DynamicTable({
                       </Button>
                     </Link>
 
-                    {/* Edit → /products/edit/[slug] */}
+                    {/* Edit */}
                     <Link href={`/products/edit/${row.slug}`} passHref>
                       <Button
                         variant="ghost"
@@ -175,7 +192,7 @@ export default function DynamicTable({
                       </Button>
                     </Link>
 
-                    {/* Delete stays normal */}
+                    {/* Delete */}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -188,28 +205,30 @@ export default function DynamicTable({
               ))
             )}
           </TableBody>
-        </Table>
+        </ShadTable>
       </div>
 
-      {/* Pagination */}
+      {/* ---------------------- PAGINATION ---------------------- */}
       {totalPages > 1 && (
         <div className="flex justify-end items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             disabled={currentPage === 1}
-            onClick={() => setCurrentPage((p) => p - 1)}
+            onClick={() => onPageChange(currentPage - 1)}
           >
             Previous
           </Button>
+
           <span className="text-sm">
             Page {currentPage} of {totalPages}
           </span>
+
           <Button
             variant="outline"
             size="sm"
             disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((p) => p + 1)}
+            onClick={() => onPageChange(currentPage + 1)}
           >
             Next
           </Button>

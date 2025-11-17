@@ -2,7 +2,7 @@ import { Bell, Download, MessageCircle, User } from "lucide-react";
 
 export default function Topbar() {
   return (
-    <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-border bg-background sticky top-0 z-30">
+    <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-border bg-[#fff] sticky top-0 z-30">
       <div className="flex items-center gap-6">
         <div className="w-8 h-8" />
         <div className="text-xl font-semibold text-foreground">

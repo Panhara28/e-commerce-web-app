@@ -3,13 +3,13 @@ import { Button } from "../ui/button";
 
 export default function TabNavigation() {
   return (
-    <div className="flex items-center justify-between px-20 md:px-20 py-4 border-b border-border bg-background overflow-x-auto">
+    <div className="flex items-center justify-between px-20 md:px-20 py-4 border-b border-border bg-[#fff] overflow-x-auto">
       <div className="flex gap-6 text-sm md:text-base">
-        <Tab label="Home" active />
+        {/* <Tab label="Home" active />
         <Tab label="Apps" />
         <Tab label="Files" />
         <Tab label="Projects" />
-        <Tab label="Learn" />
+        <Tab label="Learn" /> */}
       </div>
       <div className="flex gap-2 ml-4 md:ml-0">
         <Button

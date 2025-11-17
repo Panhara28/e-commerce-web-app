@@ -21,7 +21,7 @@ export default function LayoutWrapper({
         {/* Top Bar */}
         <Topbar />
         {/* Tabs Navigation */}
-        <TabNavigation />
+        {/* <TabNavigation /> */}
         {/* Close Sidebar on Mobile when navigating */}
         <CloseSidebarMobile />
         <div className="px-20 md:px-20 py-4">{children}</div>
