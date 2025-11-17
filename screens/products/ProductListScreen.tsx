@@ -93,8 +93,6 @@ export default function ProductListScreen() {
   const handleDelete = async (row: Record<string, unknown>) => {
     const item = row as ProductListItem;
 
-    if (!confirm(`Are you sure you want to delete ${item.name}?`)) return;
-
     await fetch(`/api/products/${item.slug}/delete`, {
       method: "DELETE",
     });

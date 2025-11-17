@@ -21,6 +21,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 
 import { Eye, Edit, Trash2 } from "lucide-react";
@@ -54,7 +62,9 @@ export interface DynamicTableProps {
   onView?: (row: Record<string, unknown>) => void;
   onEdit?: (row: Record<string, unknown>) => void;
   onDelete?: (row: Record<string, unknown>) => Promise<void>;
-  onDeleteComplete?: () => void; // 🔥 NEW
+
+  /** ✅ Added fix */
+  onDeleteComplete?: () => void;
 }
 
 /* --------------------------------------------------------
@@ -75,13 +85,29 @@ export default function DynamicTable({
   onDeleteComplete,
 }: DynamicTableProps) {
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
 
-  /* --------------------------------------------------------
-     HANDLE FILTER CHANGE
-  -------------------------------------------------------- */
+  /* ---------------- HANDLE DELETE CLICK ---------------- */
+  const confirmDelete = (row: Record<string, unknown>) => {
+    setSelectedRow(row);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (selectedRow && onDelete) {
+      await onDelete(selectedRow);
+      onDeleteComplete?.(); // 🔥 refresh parent UI
+    }
+    setDeleteDialogOpen(false);
+  };
+
+  /* ---------------- FILTER CHANGE ---------------- */
   const handleFilterChange = (key: string, value: string) => {
     const updated = { ...filterValues, [key]: value };
-
     setFilterValues(updated);
     onFiltersChange(updated);
   };
@@ -93,7 +119,7 @@ export default function DynamicTable({
   -------------------------------------------------------- */
   return (
     <div className="space-y-4">
-      {/* ---------------------- FILTERS ---------------------- */}
+      {/* FILTERS */}
       {filters.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {filters.map((filter) => (
@@ -124,7 +150,6 @@ export default function DynamicTable({
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder={filter.placeholder} />
                   </SelectTrigger>
-
                   <SelectContent>
                     <SelectItem value="__all__">All</SelectItem>
                     {filter.options?.map((opt) => (
@@ -140,7 +165,7 @@ export default function DynamicTable({
         </div>
       )}
 
-      {/* ---------------------- TABLE ---------------------- */}
+      {/* TABLE */}
       <div className="border rounded-lg overflow-hidden">
         <ShadTable>
           <TableHeader>
@@ -172,36 +197,22 @@ export default function DynamicTable({
                   ))}
 
                   <TableCell className="flex justify-end gap-2">
-                    {/* View */}
                     <Link href={`/products/${row.slug}`} passHref>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onView?.(row)}
-                      >
+                      <Button variant="ghost" size="sm">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
 
-                    {/* Edit */}
                     <Link href={`/products/edit/${row.slug}`} passHref>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit?.(row)}
-                      >
+                      <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
                     </Link>
 
-                    {/* Delete */}
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={async () => {
-                        await onDelete?.(row);
-                        onDeleteComplete?.(); // 🔥 refresh parent
-                      }}
+                      onClick={() => confirmDelete(row)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -213,7 +224,7 @@ export default function DynamicTable({
         </ShadTable>
       </div>
 
-      {/* ---------------------- PAGINATION ---------------------- */}
+      {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex justify-end items-center gap-2">
           <Button
@@ -239,6 +250,32 @@ export default function DynamicTable({
           </Button>
         </div>
       )}
+
+      {/* DELETE CONFIRMATION DIALOG */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete{" "}
+            <span className="font-semibold">{String(selectedRow?.name)}</span>?
+          </p>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Yes, Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
