@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, startTransition } from "react";
+import { useState, useEffect, useMemo, startTransition, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, X, Grip as Grip2, Trash2, Plus } from "lucide-react";
 
@@ -18,39 +18,78 @@ import {
   SelectValue,
 } from "../ui/select";
 import { SelectCategory } from "../select-category";
-import { useCategories } from "@/hooks/useCategories";
 import VariantList from "../variants/variant-list";
 import {
   convertHTMLtoLexicalJSON,
   defaultEmptyLexicalState,
-  lexicalJSONtoHTML,
 } from "@/utlis/convertLexical";
+import { SerializedEditorState } from "lexical";
 
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
 /* -------------------------------------------------------------------------- */
 
-type SubVariant = {
+export type SubVariant = {
+  size?: string; // ⬅ make optional
   color: string;
   material: string;
   price: number;
   stock: number;
-  imageVariant?: string;
   barcode?: string;
+  imageVariant?: string | null;
 };
 
-type Variant = {
+export type Variant = {
   id?: string;
+  slug?: string;
+  productId?: number;
+
   size?: string;
   color?: string;
   material?: string;
-  price?: number;
-  stock?: number;
-  imageVariant?: string;
+
+  price: number;
+  stock: number;
+
   barcode?: string;
-  sub_variants?: SubVariant[];
+  imageVariant?: string | null;
+
+  sub_variants: SubVariant[]; // ALWAYS required
 };
 
+type FlatVariant = {
+  size: string;
+  color: string;
+  material: string;
+  price: number;
+  stock: number;
+  barcode?: string;
+  imageVariant?: string;
+};
+
+type MediaFile = {
+  url: string;
+  name?: string;
+  size?: number;
+  type?: string;
+};
+
+interface ProductForm {
+  title: string;
+  description: SerializedEditorState | null;
+  categoryId: string;
+  productCode: string;
+  status: "DRAFT" | "PUBLISHED";
+  price: string;
+  discount: string;
+  salePriceHold: string;
+  discountHold: string;
+  salePricePremium: string;
+  discountPremium: string;
+}
+type ProductMedia = {
+  url: string;
+};
 const STRUCTURE_KEY = "variant_data_v1";
 
 /* -------------------------------------------------------------------------- */
@@ -60,14 +99,12 @@ const STRUCTURE_KEY = "variant_data_v1";
 export default function ProductEditForm() {
   const params = useParams();
   const slug = params?.slug as string;
-  console.log(slug);
-  const { setCategories } = useCategories();
-
   const [loading, setLoading] = useState(true);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const descriptionRef = useRef<unknown>(null);
 
-  const [mediaFiles, setMediaFiles] = useState<any[]>([]);
-  const [resetKey, setResetKey] = useState(0);
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+  const [resetKey] = useState(0);
 
   const [variants, setVariants] = useState<
     { name: string; values: string[] }[]
@@ -77,9 +114,9 @@ export default function ProductEditForm() {
     variants: [],
   });
 
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [, setIsGenerating] = useState(false);
 
-  const [productForm, setProductForm]: any = useState({
+  const [productForm, setProductForm] = useState<ProductForm>({
     title: "",
     description: null,
     categoryId: "",
@@ -110,72 +147,73 @@ export default function ProductEditForm() {
   /* FETCH PRODUCT DATA                                                          */
   /* -------------------------------------------------------------------------- */
 
-  const loadProduct = async () => {
-    try {
-      const res = await fetch(`/api/products/${slug}`);
-      const json = await res.json();
+  // const loadProduct = async () => {
+  //   try {
+  //     const res = await fetch(`/api/products/${slug}`);
+  //     const json = await res.json();
 
-      const p = json.data;
-      let descriptionJSON;
+  //     const p = json.data;
+  //     let descriptionJSON;
 
-      // CASE 1: Already JSON in DB
-      if (p.description?.root) {
-        descriptionJSON = p.description;
-      }
-      // CASE 2: Old HTML (first version before editor implemented)
-      else if (p.description?.html) {
-        // Convert HTML → JSON once
-        descriptionJSON = convertHTMLtoLexicalJSON(p.description.html);
-      }
-      // CASE 3: Empty
-      else {
-        descriptionJSON = defaultEmptyLexicalState();
-      }
+  //     // CASE 1: Already JSON in DB
+  //     if (p.description?.root) {
+  //       descriptionJSON = p.description;
+  //     }
+  //     // CASE 2: Old HTML (first version before editor implemented)
+  //     else if (p.description?.html) {
+  //       // Convert HTML → JSON once
+  //       descriptionJSON = convertHTMLtoLexicalJSON(p.description.html);
+  //     }
+  //     // CASE 3: Empty
+  //     else {
+  //       descriptionJSON = defaultEmptyLexicalState();
+  //     }
 
-      console.log("🟦 [LOADED PRODUCT] description:", descriptionJSON); // 🔥 Trace #1
-      /* -------------------- PRODUCT FORM -------------------- */
-      setProductForm({
-        title: p.title,
-        description: descriptionJSON,
-        categoryId: p.categoryId,
-        productCode: p.productCode || "",
-        status: p.status,
-        price: p.price,
-        discount: p.discount,
-        salePriceHold: p.salePriceHold,
-        discountHold: p.discountHold,
-        salePricePremium: p.salePricePremium,
-        discountPremium: p.discountPremium,
-      });
+  //     setProductForm({
+  //       title: p.title,
+  //       description: descriptionJSON,
+  //       categoryId: p.categoryId,
+  //       productCode: p.productCode || "",
+  //       status: p.status,
+  //       price: p.price,
+  //       discount: p.discount,
+  //       salePriceHold: p.salePriceHold,
+  //       discountHold: p.discountHold,
+  //       salePricePremium: p.salePricePremium,
+  //       discountPremium: p.discountPremium,
+  //     });
 
-      /* -------------------- MEDIA FILES -------------------- */
-      const media = (p.MediaProductDetails || []).map((m: any) => ({
-        url: m.url,
-      }));
-      setMediaFiles(media);
+  //     descriptionRef.current = descriptionJSON;
 
-      /* -------------------- VARIANT CONVERSION -------------------- */
-      const grouped = convertFlatVariants(p.variants);
-      setOutput({ variants: grouped });
-      persistStructure({ variants: grouped });
+  //     /* -------------------- MEDIA FILES -------------------- */
+  //     const media = (p.MediaProductDetails || []).map((m: ProductMedia) => ({
+  //       url: m.url,
+  //     }));
 
-      /* -------------------- OPTION BUILDER AUTO-FILL -------------------- */
-      const opts = autoGenerateOptions(grouped);
-      setVariants(opts);
+  //     setMediaFiles(media);
 
-      setInitialLoaded(true);
-      setLoading(false);
-    } catch (error) {
-      console.error("Failed to load product:", error);
-      setLoading(false);
-    }
-  };
+  //     /* -------------------- VARIANT CONVERSION -------------------- */
+  //     const grouped = convertFlatVariants(p.variants);
+  //     setOutput({ variants: grouped });
+  //     persistStructure({ variants: grouped });
+
+  //     /* -------------------- OPTION BUILDER AUTO-FILL -------------------- */
+  //     const opts = autoGenerateOptions(grouped);
+  //     setVariants(opts);
+
+  //     setInitialLoaded(true);
+  //     setLoading(false);
+  //   } catch (error) {
+  //     console.error("Failed to load product:", error);
+  //     setLoading(false);
+  //   }
+  // };
 
   /* -------------------------------------------------------------------------- */
   /* FLAT → GROUPED VARIANT CONVERSION                                          */
   /* -------------------------------------------------------------------------- */
 
-  const convertFlatVariants = (flat: any[]): Variant[] => {
+  const convertFlatVariants = (flat: FlatVariant[]): Variant[] => {
     if (!flat?.length) return [];
 
     // Group by SIZE (or first option)
@@ -198,12 +236,13 @@ export default function ProductEditForm() {
       }
 
       groups[primary].sub_variants.push({
+        size: v.size || "", // ✅ add size
         color: v.color,
         material: v.material,
         price: v.price,
         stock: v.stock,
         barcode: v.barcode,
-        imageVariant: v.imageVariant,
+        imageVariant: v.imageVariant || "",
       });
     }
 
@@ -261,8 +300,11 @@ export default function ProductEditForm() {
 
     if (active.length === 0) return { variants: [] };
 
-    const combine = (arrs: string[][]) =>
-      arrs.reduce((a, b) => a.flatMap((x) => b.map((y) => [...x, y])), [[]]);
+    const combine = (arrs: string[][]): string[][] =>
+      arrs.reduce<string[][]>(
+        (acc, cur) => acc.flatMap((a) => cur.map((b) => [...a, b])),
+        [[]]
+      );
 
     const combos = combine(active.map((x) => x.values));
 
@@ -326,7 +368,7 @@ export default function ProductEditForm() {
 
     const t = setTimeout(() => {
       setOutput((prev) => {
-        const merged = generatedOutput.variants.map((v) => {
+        const merged = generatedOutput.variants.map((v: Variant) => {
           const existing = prev.variants.find(
             (o) =>
               o.size === v.size &&
@@ -335,8 +377,15 @@ export default function ProductEditForm() {
           );
 
           if (existing) {
-            const mergedSubs = v.sub_variants!.map((s, i) => {
-              const prevSub = existing.sub_variants?.[i] || {};
+            const mergedSubs = v.sub_variants!.map((s: SubVariant, i) => {
+              const prevSub: SubVariant = existing.sub_variants?.[i] ?? {
+                color: "",
+                material: "",
+                price: 0,
+                stock: 0,
+                barcode: "",
+                imageVariant: "",
+              };
 
               return {
                 color: s.color,
@@ -404,9 +453,9 @@ export default function ProductEditForm() {
       discountPremium: parseFloat(p.discountPremium) || 0,
       discount: parseFloat(p.discount) || 0,
 
-      variants: output.variants.flatMap((v: any) =>
+      variants: output.variants.flatMap((v: Variant) =>
         v.sub_variants.length > 0
-          ? v.sub_variants.map((s: any) => ({
+          ? v.sub_variants.map((s: SubVariant) => ({
               size: v.size || "",
               color: s.color || "",
               material: s.material || "",
@@ -430,7 +479,6 @@ export default function ProductEditForm() {
 
       mediaUrls: mediaFiles.map((m) => ({ url: m.url })),
     };
-    console.log("🟥 [API PAYLOAD] description:", p.description); // 🔥 Trace #3
 
     try {
       const response = await fetch(`/api/products/${slug}/edit`, {
@@ -447,7 +495,7 @@ export default function ProductEditForm() {
         alert(data.message || "Failed to update product!");
       }
     } catch (error) {
-      alert("Network error while updating product!");
+      console.log("Network error while updating product!", error);
     }
   };
 
@@ -456,8 +504,64 @@ export default function ProductEditForm() {
   /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
-    loadProduct();
-  }, []);
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/products/${slug}`);
+        const json = await res.json();
+
+        if (!isMounted) return;
+
+        const p = json.data;
+
+        let descriptionJSON;
+
+        if (p.description?.root) descriptionJSON = p.description;
+        else if (p.description?.html)
+          descriptionJSON = convertHTMLtoLexicalJSON(p.description.html);
+        else descriptionJSON = defaultEmptyLexicalState();
+
+        setProductForm({
+          title: p.title,
+          description: descriptionJSON,
+          categoryId: p.categoryId,
+          productCode: p.productCode || "",
+          status: p.status,
+          price: p.price,
+          discount: p.discount,
+          salePriceHold: p.salePriceHold,
+          discountHold: p.discountHold,
+          salePricePremium: p.salePricePremium,
+          discountPremium: p.discountPremium,
+        });
+
+        descriptionRef.current = descriptionJSON;
+
+        const media = (p.MediaProductDetails || []).map((m: ProductMedia) => ({
+          url: m.url,
+        }));
+        setMediaFiles(media);
+
+        const grouped = convertFlatVariants(p.variants);
+        setOutput({ variants: grouped });
+        persistStructure({ variants: grouped });
+
+        const opts = autoGenerateOptions(grouped);
+        setVariants(opts);
+
+        setInitialLoaded(true);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to load product", err);
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [slug]);
 
   /* -------------------------------------------------------------------------- */
   /* RENDER                                                                     */
@@ -494,8 +598,8 @@ export default function ProductEditForm() {
                 {productForm.description !== null && (
                   <RichText
                     initialValue={productForm.description}
-                    onChange={(val) => {
-                      productForm.description = val; // do NOT cause re-render
+                    onChange={(val: unknown) => {
+                      descriptionRef.current = val; // safe, no re-render
                     }}
                   />
                 )}
@@ -512,10 +616,10 @@ export default function ProductEditForm() {
                   <h6 className="text-sm py-1">Category</h6>
                   <SelectCategory
                     onSelect={(id) =>
-                      setProductForm({ ...productForm, categoryId: id })
+                      setProductForm({ ...productForm, categoryId: String(id) })
                     }
                     resetSignal={resetKey}
-                    defaultValue={productForm.categoryId}
+                    defaultValue={Number(productForm.categoryId) || undefined}
                   />
                 </div>
 
@@ -789,7 +893,7 @@ export default function ProductEditForm() {
 
                 <Select
                   value={productForm.status}
-                  onValueChange={(val) =>
+                  onValueChange={(val: "DRAFT" | "PUBLISHED") =>
                     setProductForm({ ...productForm, status: val })
                   }
                 >

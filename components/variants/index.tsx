@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, X, Grip as Grip2, Trash2, Plus } from "lucide-react";
+import { X, Grip as Grip2, Trash2, Plus } from "lucide-react";
 import { useState, useEffect, useMemo, startTransition } from "react";
 import VariantList from "./variant-list";
 import { Card, CardFooter } from "@/components/ui/card";
@@ -18,65 +18,71 @@ import {
 } from "../ui/select";
 import { SelectCategory } from "../select-category";
 import { useCategories } from "@/hooks/useCategories";
+import { SerializedEditorState } from "lexical";
 
 // --------------------- Types ---------------------
-type SubVariant = {
+
+type FlatVariant = {
+  size?: string;
   color: string;
   material: string;
   price: number;
   stock: number;
+  barcode?: string;
   imageVariant?: string;
+};
+
+export type SubVariant = {
+  size?: string;
+  color: string;
+  material: string;
+  price: number;
+  stock: number;
+  imageVariant?: string | null;
   barcode?: string;
 };
 
-type Variant = {
+export type Variant = {
   id?: string;
   size?: string;
   color?: string;
   material?: string;
-  price?: number;
-  stock?: number;
-  imageVariant?: string;
+  price: number;
+  stock: number;
+  imageVariant?: string | null;
   barcode?: string;
-  sub_variants?: SubVariant[];
+  sub_variants: SubVariant[];
   name?: string;
   available?: number;
 };
 
-type Product = {
-  id: number;
-  slug: string;
-  title: string;
-  description: { text: string };
-  categoryId: number;
-  type: string;
-  vendor: string;
-  price: number;
-  variants: Variant[];
-  created_at: string;
+type MediaFile = {
+  url: string;
+  name?: string;
+  size?: number;
+  type?: string;
 };
 
-interface Option {
-  id: string;
-  name: string;
-  value: string;
-  hasError: boolean;
+interface ProductForm {
+  title: string;
+  description: SerializedEditorState | null;
+  categoryId: string;
+  productCode: string;
+  status: "DRAFT" | "PUBLISHED";
+  price: string;
+  discount: string;
+  salePriceHold: string;
+  discountHold: string;
+  salePricePremium: string;
+  discountPremium: string;
 }
 
 const STRUCTURE_KEY = "variant_data_v1";
-const PRODUCT_KEY = "products_v1";
 
 export default function Variants() {
-  const [mediaFiles, setMediaFiles] = useState<any[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const { setCategories } = useCategories();
-
-  const [showAdditional, setShowAdditional] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-
-  const [options, setOptions] = useState<Option[]>([
-    { id: "1", name: "Size", value: "Medium", hasError: true },
-    { id: "2", name: "Color", value: "Black", hasError: true },
-  ]);
 
   const [variants, setVariants] = useState<
     { name: string; values: string[] }[]
@@ -91,12 +97,12 @@ export default function Variants() {
     }
   });
 
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [, setIsGenerating] = useState(false);
 
   // PRODUCT FIELDS
-  const [productForm, setProductForm]: any = useState({
+  const [productForm, setProductForm] = useState<ProductForm>({
     title: "",
-    description: "",
+    description: null,
     categoryId: "",
     productCode: "",
     status: "DRAFT",
@@ -173,13 +179,17 @@ export default function Variants() {
 
     if (active.length === 0) return { variants: [] };
 
-    const combine = (arrs: string[][]) =>
-      arrs.reduce((a, b) => a.flatMap((x) => b.map((y) => [...x, y])), [[]]);
+    // ✅ FIXED combine() with proper TS typing
+    const combine = (arrs: string[][]): string[][] =>
+      arrs.reduce<string[][]>(
+        (acc, cur) => acc.flatMap((x) => cur.map((y) => [...x, y])),
+        [[]]
+      );
 
     const combos = combine(active.map((x) => x.values));
 
     const result = combos.map((combo) => {
-      const obj: Variant = { sub_variants: [], price: 0, stock: 0 };
+      const obj: Variant = { sub_variants: [], price: 0, stock: 0, size: "" };
       active.forEach((opt, i) => {
         if (opt.name.includes("size")) obj.size = combo[i];
         else if (opt.name.includes("color")) obj.color = combo[i];
@@ -215,11 +225,13 @@ export default function Variants() {
         stock: 0,
         imageVariant: "",
         sub_variants: children.map((r) => ({
+          size: r.size || "", // ✔ add size
           color: r.color || "",
           material: r.material || "",
           price: 0,
           stock: 0,
           imageVariant: "",
+          barcode: "",
         })),
       };
     });
@@ -233,7 +245,7 @@ export default function Variants() {
 
     const t = setTimeout(() => {
       setOutput((prev) => {
-        const merged = generatedOutput.variants.map((v) => {
+        const merged = generatedOutput.variants.map((v: Variant) => {
           const existing = prev.variants.find(
             (o) =>
               o.size === v.size &&
@@ -242,8 +254,16 @@ export default function Variants() {
           );
 
           if (existing) {
-            const mergedSubs = v.sub_variants!.map((s, i) => {
-              const prevSub = existing.sub_variants?.[i] || {};
+            const mergedSubs = v.sub_variants!.map((s: SubVariant, i) => {
+              const prevSub: SubVariant = existing.sub_variants?.[i] || {
+                color: "",
+                material: "",
+                size: "",
+                price: 0,
+                stock: 0,
+                imageVariant: "",
+                barcode: "", // ✅ FIX ADDED
+              };
 
               return {
                 ...s,
@@ -311,17 +331,19 @@ export default function Variants() {
       discountPremium: parseFloat(discountPremium) || 0,
       discount: parseInt(productForm.discount) || 0,
 
-      variants: output.variants.flatMap((v: any) =>
-        v.sub_variants.length > 0
-          ? v.sub_variants.map((s: any) => ({
-              size: v.size || "",
-              color: s.color || "",
-              material: s.material || "",
-              price: s.price || 0,
-              stock: s.stock || 0,
-              barcode: s.barcode || "",
-              imageVariant: s.imageVariant || "",
-            }))
+      variants: output.variants.flatMap((v: Variant): FlatVariant[] =>
+        v.sub_variants && v.sub_variants.length > 0
+          ? v.sub_variants.map(
+              (s: SubVariant): FlatVariant => ({
+                size: v.size || "",
+                color: s.color || "",
+                material: s.material || "",
+                price: s.price || 0,
+                stock: s.stock || 0,
+                barcode: s.barcode || "",
+                imageVariant: s.imageVariant || "",
+              })
+            )
           : [
               {
                 size: v.size || "",
@@ -331,7 +353,7 @@ export default function Variants() {
                 stock: v.stock || 0,
                 barcode: v.barcode || "",
                 imageVariant: v.imageVariant || "",
-              },
+              } as FlatVariant,
             ]
       ),
 
@@ -354,7 +376,7 @@ export default function Variants() {
 
         setProductForm({
           title: "",
-          description: "",
+          description: null,
           categoryId: "",
           productCode: "",
           status: "DRAFT",
@@ -376,7 +398,7 @@ export default function Variants() {
         alert(data.message || "Failed to create product!");
       }
     } catch (error) {
-      alert("Network error while creating product!");
+      console.log("Network error while creating product!", error);
     }
   };
 
@@ -404,8 +426,8 @@ export default function Variants() {
                 <h6 className="text-sm py-1">Description</h6>
                 <RichText
                   key={resetKey}
-                  value={productForm.description}
-                  onChange={(val) =>
+                  initialValue={productForm.description}
+                  onChange={(val: SerializedEditorState) =>
                     setProductForm({ ...productForm, description: val })
                   }
                 />
@@ -422,7 +444,7 @@ export default function Variants() {
                   <h6 className="text-sm py-1">Category</h6>
                   <SelectCategory
                     onSelect={(id) =>
-                      setProductForm({ ...productForm, categoryId: id })
+                      setProductForm({ ...productForm, categoryId: String(id) })
                     }
                     resetSignal={resetKey}
                   />
@@ -672,7 +694,10 @@ export default function Variants() {
                 <Select
                   value={productForm.status}
                   onValueChange={(val) =>
-                    setProductForm({ ...productForm, status: val })
+                    setProductForm({
+                      ...productForm,
+                      status: val as "DRAFT" | "PUBLISHED",
+                    })
                   }
                 >
                   <SelectTrigger className="w-[100%] shadow-none border border-black">

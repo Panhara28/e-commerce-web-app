@@ -1,23 +1,53 @@
 "use client";
 
 import { useState } from "react";
-import { DndContext, closestCenter } from "@dnd-kit/core";
+import {
+  DndContext,
+  closestCenter,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
-import SortableMediaItem from "./sortable-item";
+
 import { Plus } from "lucide-react";
+import SortableMediaItem from "./sortable-item";
+
+/* --------------------------------------------- */
+/* TYPES                                          */
+/* --------------------------------------------- */
+
+export type MediaFile = {
+  id: string;
+  url: string;
+  name?: string;
+  size?: number;
+  type?: string;
+};
+
+type MediaGalleryProps = {
+  files: MediaFile[];
+  onOpenModal: () => void;
+  onReorder: (updated: MediaFile[]) => void;
+  onDelete: (id: string) => void;
+};
+
+/* --------------------------------------------- */
+/* MAIN COMPONENT                                 */
+/* --------------------------------------------- */
 
 export default function MediaGallery({
   files,
   onOpenModal,
   onReorder,
   onDelete,
-}: any) {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+}: MediaGalleryProps) {
+  const [, setActiveId] = useState<string | null>(null);
+  const [, setOverId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
   const MAX_VISIBLE = 16;
@@ -27,21 +57,37 @@ export default function MediaGallery({
     ? files.slice(1)
     : files.slice(1, MAX_VISIBLE);
 
-  const handleDragStart = (e: any) => setActiveId(e.active.id);
-  const handleDragOver = (e: any) => setOverId(e.over?.id || null);
+  /* --------------------------------------------- */
+  /* DRAG EVENTS (FULLY TYPED)                     */
+  /* --------------------------------------------- */
 
-  const handleDragEnd = (e: any) => {
+  const handleDragStart = (e: DragStartEvent) => {
+    setActiveId(String(e.active.id));
+  };
+
+  const handleDragOver = (e: DragOverEvent) => {
+    setOverId(e.over ? String(e.over.id) : null);
+  };
+
+  const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     setActiveId(null);
     setOverId(null);
 
     if (!over || active.id === over.id) return;
 
-    const oldIndex = files.findIndex((i: any) => i.id === active.id);
-    const newIndex = files.findIndex((i: any) => i.id === over.id);
+    const oldIndex = files.findIndex((i) => i.id === active.id);
+    const newIndex = files.findIndex((i) => i.id === over.id);
 
-    onReorder(arrayMove(files, oldIndex, newIndex));
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(files, oldIndex, newIndex);
+    onReorder(reordered);
   };
+
+  /* --------------------------------------------- */
+  /* RENDER                                         */
+  /* --------------------------------------------- */
 
   return (
     <DndContext
@@ -50,16 +96,22 @@ export default function MediaGallery({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={files} strategy={rectSortingStrategy}>
+      <SortableContext
+        items={files.map((f) => f.id)}
+        strategy={rectSortingStrategy}
+      >
         <div className="grid grid-cols-10 gap-4 w-full">
           {/* BIG IMAGE */}
-          <div className="col-span-2 row-span-2 relative">
-            <SortableMediaItem
-              id={files[0].id}
-              img={files[0]}
-              onRemove={onDelete}
-            />
-          </div>
+          {files.length > 0 && (
+            <div key="big-image" className="col-span-2 row-span-2 relative">
+              <SortableMediaItem
+                key={files[0].id}
+                id={files[0].id}
+                img={files[0]}
+                onRemove={onDelete}
+              />
+            </div>
+          )}
 
           {/* SMALL IMAGES */}
           {visibleSmallImages.map((img) => (
@@ -72,9 +124,10 @@ export default function MediaGallery({
             />
           ))}
 
-          {/* SHOW +X */}
+          {/* SHOW +X BUTTON */}
           {!showAll && extraCount > 0 && (
             <button
+              key="show-more"
               onClick={() => setShowAll(true)}
               className="aspect-square rounded-lg bg-gray-200 bg-opacity-70 backdrop-blur-sm border flex items-center justify-center text-gray-700 font-semibold"
             >
@@ -84,6 +137,7 @@ export default function MediaGallery({
 
           {/* ADD BUTTON */}
           <button
+            key="add-btn"
             onClick={onOpenModal}
             className="aspect-square rounded-lg border-2 border-dashed flex items-center justify-center hover:bg-gray-100"
           >

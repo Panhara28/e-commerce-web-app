@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   LexicalComposer,
   InitialConfigType,
@@ -12,19 +11,13 @@ import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 
-import {
-  HeadingNode,
-  QuoteNode
-} from "@lexical/rich-text";
-
-import {
-  ListItemNode,
-  ListNode,
-} from "@lexical/list";
-
+import { HeadingNode, QuoteNode } from "@lexical/rich-text";
+import { ListItemNode, ListNode } from "@lexical/list";
 import {
   ParagraphNode,
-  TextNode
+  TextNode,
+  EditorState,
+  SerializedEditorState,
 } from "lexical";
 
 import { editorTheme } from "@/components/editor/themes/editor-theme";
@@ -39,9 +32,16 @@ import { FormatCheckList } from "@/components/editor/plugins/toolbar/block-forma
 import { FormatQuote } from "@/components/editor/plugins/toolbar/block-format/format-quote";
 import { FontFormatToolbarPlugin } from "@/components/editor/plugins/toolbar/font-format-toolbar-plugin";
 
-export default function RichText({ initialValue, onChange }) {
-  const [editorReady, setEditorReady] = useState(false);
+/* ------------------------------------ */
+/* ✅ CORRECT TYPES FOR LEXICAL JSON     */
+/* ------------------------------------ */
 
+interface RichTextProps {
+  initialValue: SerializedEditorState | null;
+  onChange: (value: SerializedEditorState) => void;
+}
+
+export default function RichText({ initialValue, onChange }: RichTextProps) {
   const editorConfig: InitialConfigType = {
     namespace: "ProductEditor",
     theme: editorTheme,
@@ -58,11 +58,9 @@ export default function RichText({ initialValue, onChange }) {
       if (!initialValue) return;
 
       try {
-        if (initialValue?.root) {
-          // JSON → editor state
-          const state = editor.parseEditorState(JSON.stringify(initialValue));
-          editor.setEditorState(state);
-        }
+        // Check if JSON includes lexical root
+        const state = editor.parseEditorState(JSON.stringify(initialValue));
+        editor.setEditorState(state);
       } catch (e) {
         console.error("❌ Failed to load editor state:", e);
       }
@@ -76,6 +74,7 @@ export default function RichText({ initialValue, onChange }) {
   return (
     <div className="bg-white w-full overflow-hidden rounded-lg border">
       <LexicalComposer initialConfig={editorConfig}>
+        {/* Toolbar */}
         <ToolbarPlugin>
           {() => (
             <div className="sticky top-0 z-10 flex gap-2 overflow-auto border-b p-1 bg-white">
@@ -105,10 +104,11 @@ export default function RichText({ initialValue, onChange }) {
         <ListPlugin />
         <CheckListPlugin />
 
+        {/* OnChange */}
         <OnChangePlugin
-          onChange={(editorState) => {
-            const json = editorState.toJSON();
-            onChange(json); // ALWAYS JSON
+          onChange={(editorState: EditorState) => {
+            const json = editorState.toJSON() as SerializedEditorState;
+            onChange(json);
           }}
         />
       </LexicalComposer>
