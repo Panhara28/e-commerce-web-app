@@ -53,7 +53,8 @@ export interface DynamicTableProps {
 
   onView?: (row: Record<string, unknown>) => void;
   onEdit?: (row: Record<string, unknown>) => void;
-  onDelete?: (row: Record<string, unknown>) => void;
+  onDelete?: (row: Record<string, unknown>) => Promise<void>;
+  onDeleteComplete?: () => void; // 🔥 NEW
 }
 
 /* --------------------------------------------------------
@@ -71,6 +72,7 @@ export default function DynamicTable({
   onView,
   onEdit,
   onDelete,
+  onDeleteComplete,
 }: DynamicTableProps) {
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
@@ -81,8 +83,6 @@ export default function DynamicTable({
     const updated = { ...filterValues, [key]: value };
 
     setFilterValues(updated);
-
-    // Tell parent
     onFiltersChange(updated);
   };
 
@@ -99,7 +99,10 @@ export default function DynamicTable({
           {filters.map((filter) => (
             <div key={filter.key} className="flex flex-col">
               <label className="text-sm text-muted-foreground mb-1">
-                {filter.label || filter.key}
+                {filter.label ||
+                  filter.key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/^./, (c) => c.toUpperCase())}
               </label>
 
               {filter.type === "input" ? (
@@ -168,7 +171,6 @@ export default function DynamicTable({
                     <TableCell key={col}>{String(row[col] ?? "")}</TableCell>
                   ))}
 
-                  {/* ACTION BUTTONS */}
                   <TableCell className="flex justify-end gap-2">
                     {/* View */}
                     <Link href={`/products/${row.slug}`} passHref>
@@ -196,7 +198,10 @@ export default function DynamicTable({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDelete?.(row)}
+                      onClick={async () => {
+                        await onDelete?.(row);
+                        onDeleteComplete?.(); // 🔥 refresh parent
+                      }}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

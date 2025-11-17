@@ -1,13 +1,17 @@
 // /app/api/dev/seed/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { PrismaClient, ProductStatus, User } from "@/lib/generated/prisma";
 import { faker } from "@faker-js/faker";
 import { v4 as uuidv4 } from "uuid";
+
 const prisma = new PrismaClient();
 
 const DUMMY_PASSWORD =
   "$argon2id$v=19$m=65536,t=3,p=4$oTfBlJjwFXLyr8hj8I8LrQ$7vd6LYWLfrzgXSaWiuwXFMkrH6O9t0Jlw+/f4WwyIlQ";
 
+/* --------------------------------------------------------------
+   SEED CATEGORIES (recursive 3-level)
+-------------------------------------------------------------- */
 async function seedCategories() {
   const createCategory = async (
     name: string,
@@ -20,7 +24,11 @@ async function seedCategories() {
 
     if (depth < 2) {
       for (let i = 0; i < 2; i++) {
-        await createCategory(faker.commerce.department(), category.id, depth + 1);
+        await createCategory(
+          faker.commerce.department(),
+          category.id,
+          depth + 1
+        );
       }
     }
 
@@ -32,6 +40,9 @@ async function seedCategories() {
   }
 }
 
+/* --------------------------------------------------------------
+   SEED ROLES + PERMISSIONS
+-------------------------------------------------------------- */
 async function seedPermissionsAndRoles() {
   const permissionNames = [
     "list_user",
@@ -76,7 +87,10 @@ async function seedPermissionsAndRoles() {
   return adminRole;
 }
 
-async function seedUsers(roleId: number) {
+/* --------------------------------------------------------------
+   SEED USERS
+-------------------------------------------------------------- */
+async function seedUsers(roleId: number): Promise<User[]> {
   return Promise.all(
     Array.from({ length: 50 }).map(() =>
       prisma.user.create({
@@ -93,11 +107,21 @@ async function seedUsers(roleId: number) {
   );
 }
 
-async function seedProductsAndVariants(users: any[]) {
+/* --------------------------------------------------------------
+   SEED PRODUCTS + VARIANTS + MEDIA
+-------------------------------------------------------------- */
+async function seedProductsAndVariants(users: User[]) {
   const categories = await prisma.category.findMany({
     take: 5,
     orderBy: { id: "asc" },
   });
+
+  const productStatuses: ProductStatus[] = [
+    ProductStatus.DRAFT,
+    ProductStatus.PUBLISHED,
+    ProductStatus.DELETED,
+    ProductStatus.RECOVERED,
+  ];
 
   for (let i = 0; i < 10; i++) {
     const product = await prisma.product.create({
@@ -105,7 +129,13 @@ async function seedProductsAndVariants(users: any[]) {
         title: faker.commerce.productName(),
         description: { text: faker.commerce.productDescription() },
         price: Number(faker.commerce.price()),
+        productCode: faker.string.alphanumeric(8).toUpperCase(),
         slug: faker.string.uuid(),
+
+        /* 🔥 NEW: random status */
+        status:
+          productStatuses[Math.floor(Math.random() * productStatuses.length)],
+
         categoryId:
           categories[Math.floor(Math.random() * categories.length)].id,
       },
@@ -145,18 +175,23 @@ async function seedProductsAndVariants(users: any[]) {
         size: 240000,
         title: "Product image",
         description: "Test image",
-        uploadedById: users[Math.floor(Math.random() * users.length)].id,
         visibility: "PUBLIC",
         slug: faker.string.uuid(),
+
+        uploadedById: users[Math.floor(Math.random() * users.length)].id,
+
         productId: product.id,
       },
     });
   }
 }
 
+/* --------------------------------------------------------------
+   POST /api/dev/seed
+-------------------------------------------------------------- */
 export async function POST() {
   try {
-    console.log("🌱 Seeding...");
+    console.log("🌱 Running Seeder...");
 
     await seedCategories();
     const adminRole = await seedPermissionsAndRoles();
@@ -166,6 +201,9 @@ export async function POST() {
     return NextResponse.json({ message: "🌱 Seeding completed!" });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Seed failed", detail: err }, { status: 500 });
+    return NextResponse.json(
+      { error: "Seed failed", detail: err },
+      { status: 500 }
+    );
   }
 }

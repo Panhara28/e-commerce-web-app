@@ -51,35 +51,57 @@ export default function ProductListScreen() {
   ];
 
   /* -----------------------------------------------------------
-     useEffect
+     Load Products (API call)
+  ----------------------------------------------------------- */
+  const loadProducts = async () => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
+      search: filters.name,
+      sku: filters.sku,
+      category: filters.category,
+    });
+
+    const res = await fetch(`/api/products/lists?${params.toString()}`);
+    const json = await res.json();
+
+    if (json.status === "ok") {
+      setData(json.data);
+      setTotal(json.total);
+    }
+  };
+
+  /* -----------------------------------------------------------
+     useEffect (✔ FIXED so no ESLint warning)
   ----------------------------------------------------------- */
   useEffect(() => {
     let ignore = false;
 
-    const load = async () => {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(pageSize),
-        search: filters.name,
-        sku: filters.sku,
-        category: filters.category,
-      });
-
-      const res = await fetch(`/api/products/lists?${params.toString()}`);
-      const json = await res.json();
-
-      if (!ignore && json.status === "ok") {
-        setData(json.data);
-        setTotal(json.total);
-      }
+    const fetchData = async () => {
+      if (ignore) return;
+      await loadProducts();
     };
 
-    load();
+    fetchData();
 
     return () => {
       ignore = true;
     };
-  }, [page, filters]);
+  }, [page, filters]); // dependencies
+
+  /* -------- Delete Product -------- */
+  const handleDelete = async (row: Record<string, unknown>) => {
+    const item = row as ProductListItem;
+
+    if (!confirm(`Are you sure you want to delete ${item.name}?`)) return;
+
+    await fetch(`/api/products/${item.slug}/delete`, {
+      method: "DELETE",
+    });
+
+    // Refresh after deletion
+    loadProducts();
+  };
 
   /* -----------------------------------------------------------
      Render
@@ -101,10 +123,8 @@ export default function ProductListScreen() {
               ...updated,
             }))
           }
-          onDelete={(row: Record<string, unknown>) => {
-            const item = row as ProductListItem;
-            alert(`Deleting ${item.name}`);
-          }}
+          onDelete={handleDelete}
+          onDeleteComplete={loadProducts} // 🔥 auto refresh after deletion
         />
       </Card>
     </LayoutWrapper>

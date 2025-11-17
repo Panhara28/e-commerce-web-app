@@ -13,7 +13,6 @@ export async function PATCH(
   try {
     const productSlug = params.slug;
     const payload = await req.json();
-    console.log("Editing product with slug:", productSlug);
     // ---------------------
     // Validate Required Fields
     // ---------------------

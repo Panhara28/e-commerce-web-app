@@ -3,35 +3,51 @@ import { PrismaClient, Prisma } from "@/lib/generated/prisma";
 
 const prisma = new PrismaClient();
 
-/**
- * GET /api/products
- * Returns: id, sku(productCode), name(title), price, category(name), slug
- */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page") || 1);
     const limit = Number(searchParams.get("limit") || 20);
+
     const search = searchParams.get("search") || "";
+    const sku = searchParams.get("sku") || "";
     const categoryId = searchParams.get("category");
 
     const skip = (page - 1) * limit;
 
-    // ⛔ FIXED: no any, fully typed
-    const where: Prisma.ProductWhereInput = {};
+    // 🔍 WHERE CLAUSE
+    const where: Prisma.ProductWhereInput = {
+      // ⛔ EXCLUDE DELETED
+      status: {
+        in: ["DRAFT", "PUBLISHED", "RECOVERED"],
+      },
+    };
+
+    const orFilters: Prisma.ProductWhereInput[] = [];
 
     if (search) {
-      where.OR = [
-        { title: { contains: search } },
-        { productCode: { contains: search } },
-      ];
+      orFilters.push({
+        title: { contains: search },
+      });
+    }
+
+    if (sku) {
+      orFilters.push({
+        productCode: { contains: sku },
+      });
+    }
+
+    // Attach OR search filters
+    if (orFilters.length > 0) {
+      where.OR = orFilters;
     }
 
     if (categoryId) {
       where.categoryId = Number(categoryId);
     }
 
+    // 🛢 Fetch data
     const products = await prisma.product.findMany({
       where,
       skip,
@@ -65,7 +81,6 @@ export async function GET(req: Request) {
     });
   } catch (err) {
     console.error("❌ Failed to load products list:", err);
-
     return NextResponse.json(
       { status: "error", message: "Failed to load product list" },
       { status: 500 }

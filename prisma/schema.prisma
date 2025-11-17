@@ -109,6 +109,8 @@ enum Visibility {
 enum ProductStatus {
   DRAFT
   PUBLISHED
+  DELETED
+  RECOVERED
 }
 
 model Product {
@@ -121,11 +123,12 @@ model Product {
   status              ProductStatus         @default(DRAFT)
 
   price               Float                 @default(0.0)
-  salePriceHold       Float?                // Optional
-  discountHold        Float?                // Optional
-  salePricePremium    Float?                // Optional
-  discountPremium     Float?                // Optional
-  discount            Int?                // Optional
+  salePriceHold       Float?
+  discountHold        Float?
+  salePricePremium    Float?
+  discountPremium     Float?
+  discount            Int?
+
   variants            Variant[]
   MediaProductDetails MediaProductDetails[]
 
@@ -169,7 +172,6 @@ model Variant {
 
   @@map("variants")
 }
-
 
 model MediaProductDetails {
   id        Int      @id @default(autoincrement())
