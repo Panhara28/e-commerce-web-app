@@ -12,7 +12,7 @@ export default function HeroBanner() {
             Premium
           </span>
           <h1 className="text-3xl md:text-5xl font-bold mb-4 text-pretty">
-            Welcome to DesignAli Creative Suite
+            Welcome to Tsportcambodia Suite
           </h1>
           <p className="text-sm md:text-lg text-white/90 mb-8 max-w-2xl text-pretty">
             Unleash your creativity with our comprehensive suite of professional

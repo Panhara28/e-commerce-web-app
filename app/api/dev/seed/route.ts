@@ -1,16 +1,20 @@
-// /app/api/dev/seed/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient, ProductStatus, User } from "@/lib/generated/prisma";
+import {
+  PrismaClient,
+  ProductStatus,
+  OrderStatus,
+} from "@/lib/generated/prisma";
 import { faker } from "@faker-js/faker";
 import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient();
 
+// 🔐 Dummy Argon2 password (use your real hashed password)
 const DUMMY_PASSWORD =
   "$argon2id$v=19$m=65536,t=3,p=4$oTfBlJjwFXLyr8hj8I8LrQ$7vd6LYWLfrzgXSaWiuwXFMkrH6O9t0Jlw+/f4WwyIlQ";
 
 /* --------------------------------------------------------------
-   SEED CATEGORIES (recursive 3-level)
+   CATEGORY SEEDER (recursive 3-level)
 -------------------------------------------------------------- */
 async function seedCategories() {
   const createCategory = async (
@@ -31,17 +35,16 @@ async function seedCategories() {
         );
       }
     }
-
     return category;
   };
 
   for (let i = 0; i < 3; i++) {
-    await createCategory(faker.commerce.department(), null, 0);
+    await createCategory(faker.commerce.department());
   }
 }
 
 /* --------------------------------------------------------------
-   SEED ROLES + PERMISSIONS
+   PERMISSION + ROLE SEEDER
 -------------------------------------------------------------- */
 async function seedPermissionsAndRoles() {
   const permissionNames = [
@@ -59,6 +62,9 @@ async function seedPermissionsAndRoles() {
     "create_product",
     "category_list",
     "product_detail",
+    "order_list",
+    "order_detail",
+    "order_update",
   ];
 
   const permissions = await Promise.all(
@@ -88,11 +94,11 @@ async function seedPermissionsAndRoles() {
 }
 
 /* --------------------------------------------------------------
-   SEED USERS
+   USER SEEDER
 -------------------------------------------------------------- */
-async function seedUsers(roleId: number): Promise<User[]> {
+async function seedUsers(roleId: number) {
   return Promise.all(
-    Array.from({ length: 50 }).map(() =>
+    Array.from({ length: 20 }).map(() =>
       prisma.user.create({
         data: {
           email: faker.internet.email(),
@@ -108,62 +114,95 @@ async function seedUsers(roleId: number): Promise<User[]> {
 }
 
 /* --------------------------------------------------------------
-   SEED PRODUCTS + VARIANTS + MEDIA
+   CUSTOMER SEEDER (UPDATED WITH USERNAME + PASSWORD + STATUS)
 -------------------------------------------------------------- */
-async function seedProductsAndVariants(users: User[]) {
+async function seedCustomers() {
+  return Promise.all(
+    Array.from({ length: 30 }).map(() =>
+      prisma.customer.create({
+        data: {
+          slug: faker.string.uuid(),
+
+          username: faker.internet.username().toLowerCase(),
+          password: DUMMY_PASSWORD,
+
+          firstName: faker.person.firstName(),
+          lastName: faker.person.lastName(),
+          email: faker.internet.email(),
+          phone: faker.phone.number(),
+
+          addressLine1: faker.location.streetAddress(),
+          addressLine2: faker.location.secondaryAddress(),
+          city: faker.location.city(),
+          state: faker.location.state(),
+          postalCode: faker.location.zipCode(),
+          country: faker.location.country(),
+
+          // ⭐ If you added "status" to Customer model
+          status: "ACTIVE",
+        },
+      })
+    )
+  );
+}
+
+/* --------------------------------------------------------------
+   PRODUCTS + VARIANTS + MEDIA
+-------------------------------------------------------------- */
+async function seedProducts(users: { id: number }[]) {
   const categories = await prisma.category.findMany({
     take: 5,
     orderBy: { id: "asc" },
   });
 
-  const productStatuses: ProductStatus[] = [
+  const statuses: ProductStatus[] = [
     ProductStatus.DRAFT,
     ProductStatus.PUBLISHED,
-    ProductStatus.DELETED,
     ProductStatus.RECOVERED,
   ];
 
-  for (let i = 0; i < 10; i++) {
+  const products: { id: number }[] = [];
+
+  for (let i = 0; i < 20; i++) {
     const product = await prisma.product.create({
       data: {
         title: faker.commerce.productName(),
         description: { text: faker.commerce.productDescription() },
-        price: Number(faker.commerce.price()),
         productCode: faker.string.alphanumeric(8).toUpperCase(),
+        price: Number(faker.commerce.price()),
         slug: faker.string.uuid(),
-
-        /* 🔥 NEW: random status */
-        status:
-          productStatuses[Math.floor(Math.random() * productStatuses.length)],
-
-        categoryId:
-          categories[Math.floor(Math.random() * categories.length)].id,
+        status: faker.helpers.arrayElement(statuses),
+        categoryId: faker.helpers.arrayElement(categories).id,
       },
     });
 
+    products.push(product);
+
+    /* VARIANTS */
     await prisma.variant.createMany({
       data: [
         {
           productId: product.id,
           size: "M",
-          color: "Red",
+          color: "Black",
           material: "Cotton",
-          price: 49.99,
-          stock: 10,
+          price: Number(faker.commerce.price()),
+          stock: faker.number.int({ min: 5, max: 20 }),
           slug: faker.string.uuid(),
         },
         {
           productId: product.id,
           size: "L",
-          color: "Blue",
-          material: "Leather",
-          price: 59.99,
-          stock: 15,
+          color: "Red",
+          material: "Polyester",
+          price: Number(faker.commerce.price()),
+          stock: faker.number.int({ min: 5, max: 20 }),
           slug: faker.string.uuid(),
         },
       ],
     });
 
+    /* MEDIA */
     await prisma.media.create({
       data: {
         filename: "product.jpg",
@@ -173,21 +212,87 @@ async function seedProductsAndVariants(users: User[]) {
         mimetype: "image/jpeg",
         extension: "jpg",
         size: 240000,
-        title: "Product image",
-        description: "Test image",
+        title: "Product Image",
+        description: "Auto-generated demo image",
         visibility: "PUBLIC",
         slug: faker.string.uuid(),
-
-        uploadedById: users[Math.floor(Math.random() * users.length)].id,
-
+        uploadedById: faker.helpers.arrayElement(users).id,
         productId: product.id,
+      },
+    });
+  }
+
+  return products;
+}
+
+/* --------------------------------------------------------------
+   ORDER + ORDER ITEMS SEEDER (WITH orderedAt)
+-------------------------------------------------------------- */
+async function seedOrders(
+  customers: { id: number }[],
+  products: { id: number }[]
+) {
+  for (let i = 0; i < 30; i++) {
+    const customer = faker.helpers.arrayElement(customers);
+
+    const randomDate = faker.date.recent({ days: 30 }); // ⭐ Important
+
+    const order = await prisma.order.create({
+      data: {
+        slug: faker.string.uuid(),
+        customerId: customer.id,
+        status: faker.helpers.arrayElement([
+          OrderStatus.PENDING,
+          OrderStatus.PROCESSING,
+          OrderStatus.COMPLETED,
+          OrderStatus.CANCELLED,
+        ]),
+
+        totalAmount: 0,
+        subtotal: 0,
+
+        orderedAt: randomDate, // ⭐ NEW FIELD
+      },
+    });
+
+    let subtotal = 0;
+    const selectedProducts = faker.helpers.arrayElements(products, 2);
+
+    for (const p of selectedProducts) {
+      const variant = await prisma.variant.findFirst({
+        where: { productId: p.id },
+      });
+
+      const quantity = faker.number.int({ min: 1, max: 3 });
+      const price = variant?.price ?? 0;
+      const total = price * quantity;
+
+      subtotal += total;
+
+      await prisma.orderItem.create({
+        data: {
+          orderId: order.id,
+          productId: p.id,
+          variantId: variant?.id ?? null,
+          quantity,
+          price,
+          total,
+        },
+      });
+    }
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        subtotal,
+        totalAmount: subtotal,
       },
     });
   }
 }
 
 /* --------------------------------------------------------------
-   POST /api/dev/seed
+   MAIN SEED EXECUTION
 -------------------------------------------------------------- */
 export async function POST() {
   try {
@@ -196,13 +301,15 @@ export async function POST() {
     await seedCategories();
     const adminRole = await seedPermissionsAndRoles();
     const users = await seedUsers(adminRole.id);
-    await seedProductsAndVariants(users);
+    const customers = await seedCustomers();
+    const products = await seedProducts(users);
+    await seedOrders(customers, products);
 
-    return NextResponse.json({ message: "🌱 Seeding completed!" });
-  } catch (err) {
-    console.error(err);
+    return NextResponse.json({ message: "🌱 Seeding Completed!" });
+  } catch (error) {
+    console.error("❌ SEED ERROR:", error);
     return NextResponse.json(
-      { error: "Seed failed", detail: err },
+      { error: "Seed failed", detail: String(error) },
       { status: 500 }
     );
   }

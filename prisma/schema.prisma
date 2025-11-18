@@ -5,10 +5,50 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  // provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
+//
+// ENUMS
+//
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  OTHER
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  RESTRICTED
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  DELETED
+  RECOVERED
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+//
+// USER & ROLE SYSTEM
+//
 model User {
   id             Int      @id @default(autoincrement())
   email          String   @unique
@@ -63,6 +103,90 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+//
+// CATEGORY
+//
+model Category {
+  id        Int        @id @default(autoincrement())
+  name      String
+  slug      String     @unique @default(uuid())
+  parentId  Int?
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryHierarchy")
+  products  Product[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([parentId])
+  @@map("categories")
+}
+
+//
+// PRODUCT SYSTEM
+//
+model Product {
+  id                  Int                   @id @default(autoincrement())
+  slug                String                @unique @default(uuid())
+  title               String
+  description         Json?
+  media               Media[]
+  productCode         String?
+  status              ProductStatus         @default(DRAFT)
+
+  price               Float                 @default(0.0)
+  salePriceHold       Float?
+  discountHold        Float?
+  salePricePremium    Float?
+  discountPremium     Float?
+  discount            Int?
+
+  variants            Variant[]
+  MediaProductDetails MediaProductDetails[]
+
+  orderItems          OrderItem[]
+  cartItems           CartItem[]            // ⭐ New relation
+
+  Category            Category?             @relation(fields: [categoryId], references: [id])
+  categoryId          Int?
+
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@map("products")
+}
+
+model Variant {
+  id             Int        @id @default(autoincrement())
+  slug           String     @unique @default(uuid())
+  productId      Int
+  product        Product    @relation(fields: [productId], references: [id])
+
+  size           String?
+  color          String?
+  material       String?    @default("")
+  price          Float      @default(0)
+  stock          Int        @default(0)
+  barcode        String?    @default("")
+  imageVariant   String?    @default("")
+
+  orderItems     OrderItem[]
+  cartItems      CartItem[]     // ⭐ New relation
+
+  @@map("variants")
+}
+
+model MediaProductDetails {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique @default(uuid())
+  url       String
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("media_product_details")
+}
+
 model Media {
   id             Int        @id @default(autoincrement())
   slug           String     @unique @default(uuid())
@@ -92,95 +216,124 @@ model Media {
   @@map("medias")
 }
 
-enum MediaType {
-  IMAGE
-  VIDEO
-  AUDIO
-  DOCUMENT
-  OTHER
+//
+// CUSTOMER SYSTEM
+//
+model Customer {
+  id            Int             @id @default(autoincrement())
+  slug          String          @unique @default(uuid())
+
+  username      String          @unique
+  password      String
+
+  firstName     String
+  lastName      String
+  email         String          @unique
+  phone         String?
+  addressLine1  String?
+  addressLine2  String?
+  city          String?
+  state         String?
+  postalCode    String?
+  country       String?
+
+  status        CustomerStatus  @default(ACTIVE)
+
+  orders        Order[]
+  carts         Cart[]      // ⭐ Customer can have carts (1 active, many abandoned)
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("customers")
 }
 
-enum Visibility {
-  PUBLIC
-  PRIVATE
-  RESTRICTED
+//
+// ORDER SYSTEM
+//
+model Order {
+  id              Int           @id @default(autoincrement())
+  slug            String        @unique @default(uuid())
+
+  customerId      Int
+  customer        Customer      @relation(fields: [customerId], references: [id])
+
+  status          OrderStatus   @default(PENDING)
+
+  totalAmount     Float         @default(0)
+  subtotal        Float         @default(0)
+  discount        Float?        @default(0)
+  tax             Float?        @default(0)
+
+  notes           String?
+
+  items           OrderItem[]
+
+  orderedAt       DateTime      @default(now())
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("orders")
 }
 
-enum ProductStatus {
-  DRAFT
-  PUBLISHED
-  DELETED
-  RECOVERED
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id])
+
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id])
+
+  variantId   Int?
+  variant     Variant? @relation(fields: [variantId], references: [id])
+
+  quantity    Int      @default(1)
+  price       Float    @default(0)
+  total       Float    @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("order_items")
 }
 
-model Product {
-  id                  Int                   @id @default(autoincrement())
-  slug                String                @unique @default(uuid())
-  title               String
-  description         Json?
-  media               Media[]
-  productCode         String?
-  status              ProductStatus         @default(DRAFT)
+//
+// ⭐ CART SYSTEM (NEW)
+//
+model Cart {
+  id          Int        @id @default(autoincrement())
+  slug        String     @unique @default(uuid())
 
-  price               Float                 @default(0.0)
-  salePriceHold       Float?
-  discountHold        Float?
-  salePricePremium    Float?
-  discountPremium     Float?
-  discount            Int?
+  customerId  Int
+  customer    Customer   @relation(fields: [customerId], references: [id])
 
-  variants            Variant[]
-  MediaProductDetails MediaProductDetails[]
+  items       CartItem[]
 
-  Category            Category?             @relation(fields: [categoryId], references: [id])
-  categoryId          Int?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-
-  @@map("products")
+  @@map("carts")
 }
 
-model Category {
-  id        Int        @id @default(autoincrement())
-  name      String
-  slug      String     @unique @default(uuid())
-  parentId  Int?
-  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children  Category[] @relation("CategoryHierarchy")
-  products  Product[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+model CartItem {
+  id          Int       @id @default(autoincrement())
 
-  @@index([parentId])
-  @@map("categories")
-}
+  cartId      Int
+  cart        Cart      @relation(fields: [cartId], references: [id])
 
-model Variant {
-  id             Int        @id @default(autoincrement())
-  slug           String     @unique @default(uuid())
-  productId      Int
-  product        Product    @relation(fields: [productId], references: [id])
+  productId   Int
+  product     Product   @relation(fields: [productId], references: [id])
 
-  size           String?
-  color          String?
-  material       String?     @default("")
-  price          Float       @default(0)
-  stock          Int         @default(0)
-  barcode        String?     @default("")
-  imageVariant   String?     @default("")
+  variantId   Int?
+  variant     Variant?  @relation(fields: [variantId], references: [id])
 
-  @@map("variants")
-}
+  quantity    Int       @default(1)
+  price       Float     @default(0)
+  total       Float     @default(0)
 
-model MediaProductDetails {
-  id        Int      @id @default(autoincrement())
-  slug      String   @unique @default(uuid())
-  url       String
-  productId Int
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  @@map("media_product_details")
+  @@map("cart_items")
 }

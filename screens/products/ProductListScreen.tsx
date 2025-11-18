@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import LayoutWrapper from "@/components/layout-wrapper";
 import Table from "@/components/table";
 import { Card } from "@/components/ui/card";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 /* -----------------------------------------------------------
    Types
@@ -106,6 +108,12 @@ export default function ProductListScreen() {
   ----------------------------------------------------------- */
   return (
     <LayoutWrapper>
+      <div className="flex items-center justify-between mb-6 px-1">
+        <h1 className="text-2xl font-semibold text-foreground">Products</h1>
+        <Link href="/products/add">
+          <Button className="bg-primary text-white">+ Add Product</Button>
+        </Link>
+      </div>
       <Card className="px-10 py-6">
         <Table
           data={data}

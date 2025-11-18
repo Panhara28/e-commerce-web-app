@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 
 import { Edit, Copy, Download, MoreVertical } from "lucide-react";
+import Link from "next/link";
 
 /* -----------------------------------------------------------
    Types
@@ -230,9 +231,11 @@ export default function ProductDetailScreen() {
                         Basic details and categorization
                       </CardDescription>
                     </div>
-                    <Button variant="outline" size="icon">
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <Link href={`/products/edit/${product.slug}`}>
+                      <Button variant="outline" size="icon">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Link>
                   </CardHeader>
 
                   <CardContent className="space-y-4">
@@ -349,8 +352,9 @@ export default function ProductDetailScreen() {
                     {product.variants.length} total variants
                   </CardDescription>
                 </div>
-
-                <Button size="sm">+ Add Variant</Button>
+                <Link href={`/products/edit/${product.slug}`}>
+                  <Button size="sm">+ Add Variant</Button>
+                </Link>
               </CardHeader>
 
               <CardContent>
@@ -412,7 +416,9 @@ export default function ProductDetailScreen() {
                     {product.media.length} media files
                   </CardDescription>
                 </div>
-                <Button size="sm">+ Upload Media</Button>
+                <Link href={`/products/edit/${product.slug}`}>
+                  <Button size="sm">+ Upload Media</Button>
+                </Link>
               </CardHeader>
 
               <CardContent>
@@ -474,9 +480,11 @@ export default function ProductDetailScreen() {
                     Base price and pricing rules
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="icon">
-                  <Edit className="h-4 w-4" />
-                </Button>
+                <Link href={`/products/edit/${product.slug}`}>
+                  <Button variant="outline" size="icon">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </Link>
               </CardHeader>
 
               <CardContent className="space-y-6">

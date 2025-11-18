@@ -12,7 +12,7 @@ export default function MobileHeader() {
         <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
           ✨
         </div>
-        <span className="font-semibold text-foreground">Designali</span>
+        <span className="font-semibold text-foreground">Tsportcambodia</span>
       </div>
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
