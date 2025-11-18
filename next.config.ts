@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/seed/**",
       },
+      {
+        protocol: "https",
+        hostname: "panhara.sgp1.digitaloceanspaces.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
 };
