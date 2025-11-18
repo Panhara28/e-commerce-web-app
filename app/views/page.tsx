@@ -1,6 +1,7 @@
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import HomeProductListScreen from "@/screens/views/products/HomeProductListScreen";
 import {
   ArrowRight,
   ChevronDown,
@@ -214,26 +215,7 @@ export default function ViewPage() {
           </div>
         </section>
 
-        <section className="max-w-[1600px] mx-auto px-4 py-12">
-          <h2 className="text-2xl font-bold mb-6">Featured Jerseys</h2>
-
-          <div
-            className="
-        grid 
-        grid-cols-1 
-        lg:grid-cols-4 
-        gap-4
-      "
-          >
-            {/* Render 6 product cards or more */}
-            <ProductCard />
-            <ProductCard />
-            <ProductCard />
-            <ProductCard />
-            <ProductCard />
-            <ProductCard />
-          </div>
-        </section>
+      <HomeProductListScreen />
       </div>
     </>
   );
