@@ -53,16 +53,17 @@ export function ProductCard({ title, price, productCode, image, variants }: Prod
       </div>
 
       {/* Main Image */}
-      <div className="bg-neutral-950 p-4 flex items-center justify-center h-64 cursor-pointer group">
-        <div className="relative w-full h-full">
-          <Image
-            src={currentImage}
-            alt={title}
-            fill
-            className="object-contain transition-transform duration-300 group-hover:scale-105"
-          />
-        </div>
-      </div>
+<div className="bg-neutral-950 p-4 flex items-center justify-center cursor-pointer group">
+  <div className="relative w-full aspect-square">
+    <Image
+      src={currentImage}
+      alt={title}
+      fill
+      className="object-contain transition-transform duration-300 group-hover:scale-105"
+    />
+  </div>
+</div>
+
 
       {/* Product Info */}
       <div className="px-6 py-5 bg-neutral-900">

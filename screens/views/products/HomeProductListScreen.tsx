@@ -30,10 +30,9 @@ export default function HomeProductListScreen() {
   }, []);
 
   return (
-    <section className="max-w-[1600px] mx-auto px-4 py-12">
+    <section className="max-w-[1800px] mx-auto px-4">
       <h2 className="text-2xl font-bold mb-6">Featured Jerseys</h2>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid lg:grid-cols-5 gap-6">
         {products.map((p: any) => (
           <ProductCard
             key={p.slug}
