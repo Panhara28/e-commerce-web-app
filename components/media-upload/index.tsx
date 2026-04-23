@@ -57,29 +57,49 @@ export function MediaUpload({ value = [], onChange }: any) {
     form.append("folder", "tsport_products");
     previews.forEach((p) => form.append("files", p.file));
 
-    const res = await fetch("/api/multiple-upload", {
-      method: "POST",
-      body: form,
-    });
+    try {
+      const res = await fetch("/api/multiple-upload", {
+        method: "POST",
+        body: form,
+      });
 
-    const data = await res.json();
-    if (!res.ok) return console.error("upload failed", data);
+      const raw = await res.text();
+      let data: any = null;
 
-    // Normalize uploaded data
-    const uploaded = data.uploads.map((u: any) => ({
-      ...u,
-      id: u.slug,
-    }));
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = { raw };
+      }
 
-    // Replace preview with saved media
-    setFiles((prev) => {
-      const keep = prev.filter((f) => !f.isUploading);
-      return [...keep, ...uploaded];
-    });
+      if (!res.ok) {
+        setFiles((prev) => prev.filter((f) => !previews.some((p) => p.id === f.id)));
+        return console.error("upload failed", {
+          status: res.status,
+          statusText: res.statusText,
+          data,
+        });
+      }
 
-    await fetchMedia();
+      // Normalize uploaded data
+      const uploaded = (data?.uploads || []).map((u: any) => ({
+        ...u,
+        id: u.slug,
+      }));
 
-    if (fileInputRef.current) fileInputRef.current.value = "";
+      // Replace preview with saved media
+      setFiles((prev) => {
+        const keep = prev.filter((f) => !f.isUploading);
+        return [...keep, ...uploaded];
+      });
+
+      await fetchMedia();
+    } catch (error) {
+      setFiles((prev) => prev.filter((f) => !previews.some((p) => p.id === f.id)));
+      console.error("upload request failed", error);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   /* -------------------------------------------------------------------------- */

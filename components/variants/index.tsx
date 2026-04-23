@@ -88,13 +88,8 @@ export default function Variants() {
     { name: string; values: string[] }[]
   >([]);
 
-  const [output, setOutput] = useState<{ variants: Variant[] }>(() => {
-    try {
-      const raw = localStorage.getItem(STRUCTURE_KEY);
-      return raw ? JSON.parse(raw) : { variants: [] };
-    } catch {
-      return { variants: [] };
-    }
+  const [output, setOutput] = useState<{ variants: Variant[] }>({
+    variants: [],
   });
 
   const [, setIsGenerating] = useState(false);
@@ -118,6 +113,15 @@ export default function Variants() {
     localStorage.setItem(STRUCTURE_KEY, JSON.stringify(data));
 
   const defaultVariants = ["Size", "Color", "Material"];
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STRUCTURE_KEY);
+      setOutput(raw ? JSON.parse(raw) : { variants: [] });
+    } catch {
+      setOutput({ variants: [] });
+    }
+  }, []);
 
   const getPlaceholder = (name: string) => {
     const n = name.toLowerCase();
