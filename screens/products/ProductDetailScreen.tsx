@@ -41,7 +41,14 @@ interface ProductData {
   id: number;
   slug: string;
   title: string;
-  description: any;
+  description:
+    | string
+    | {
+        html?: string;
+        text?: string;
+        root?: unknown;
+      }
+    | null;
   productCode: string;
   status: string;
   price: number;
@@ -124,6 +131,14 @@ export default function ProductDetailScreen() {
     }
   };
 
+  const getDescriptionHtml = (description: ProductData["description"]) => {
+    if (!description) return "";
+    if (typeof description === "string") return description;
+    if (typeof description.html === "string") return description.html;
+    if (typeof description.text === "string") return description.text;
+    return "";
+  };
+
   /* -----------------------------------------------------------
      Loading / Error
   ----------------------------------------------------------- */
@@ -140,6 +155,8 @@ export default function ProductDetailScreen() {
         {error}
       </div>
     );
+
+  const descriptionHtml = getDescriptionHtml(product.description);
 
   /* -----------------------------------------------------------
      Main UI (same layout you provided)
@@ -186,9 +203,9 @@ export default function ProductDetailScreen() {
       </div>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-1">
+      <div className="max-w-7xl py-8">
         <Tabs defaultValue="details" className="w-full">
-          <TabsList>
+          <TabsList className="border bg-white">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="variants">Variants</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
@@ -252,11 +269,12 @@ export default function ProductDetailScreen() {
                       <label className="text-sm font-medium text-muted-foreground">
                         Description
                       </label>
-                      <p className="mt-1 text-sm text-foreground">
-                        {typeof product.description === "object"
-                          ? product.description?.text
-                          : product.description}
-                      </p>
+                      <div
+                        className="prose prose-sm mt-1 max-w-none text-foreground prose-p:my-2 prose-br:hidden"
+                        dangerouslySetInnerHTML={{
+                          __html: descriptionHtml || "<p>-</p>",
+                        }}
+                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

@@ -31,6 +31,7 @@ import { FormatBulletedList } from "@/components/editor/plugins/toolbar/block-fo
 import { FormatCheckList } from "@/components/editor/plugins/toolbar/block-format/format-check-list";
 import { FormatQuote } from "@/components/editor/plugins/toolbar/block-format/format-quote";
 import { FontFormatToolbarPlugin } from "@/components/editor/plugins/toolbar/font-format-toolbar-plugin";
+import { ensureLexicalState } from "@/utlis/convertLexical";
 
 /* ------------------------------------ */
 /* ✅ CORRECT TYPES FOR LEXICAL JSON     */
@@ -58,8 +59,8 @@ export default function RichText({ initialValue, onChange }: RichTextProps) {
       if (!initialValue) return;
 
       try {
-        // Check if JSON includes lexical root
-        const state = editor.parseEditorState(JSON.stringify(initialValue));
+        const safeState = ensureLexicalState(initialValue);
+        const state = editor.parseEditorState(JSON.stringify(safeState));
         editor.setEditorState(state);
       } catch (e) {
         console.error("❌ Failed to load editor state:", e);

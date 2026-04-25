@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import Image from "next/image";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,17 +13,50 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-import { Funnel, SortAsc, LayoutGrid } from "lucide-react";
+import { Search, SortAsc, LayoutGrid } from "lucide-react";
 import MediaGallery from "./media-gallery";
 
-export function MediaUpload({ value = [], onChange }: any) {
+type MediaItem = {
+  id?: string;
+  slug?: string;
+  url: string;
+  filename?: string;
+  name?: string;
+  size?: number;
+  type?: string;
+};
+
+type UploadingMediaItem = MediaItem & {
+  file?: File;
+  isUploading?: boolean;
+};
+
+type MediaListResponse = {
+  media?: MediaItem[];
+  page?: number;
+  limit?: number;
+  total?: number;
+  totalPages?: number;
+};
+
+type MediaUploadProps = {
+  value?: UploadingMediaItem[];
+  onChange?: (files: UploadingMediaItem[]) => void;
+};
+
+export function MediaUpload({ value = [], onChange }: MediaUploadProps) {
   const [openDialog, setOpenDialog] = useState(false);
 
   // --- IMPORTANT: use parent's initial value ---
-  const [files, setFiles] = useState<any[]>(value);
+  const [files, setFiles] = useState<UploadingMediaItem[]>(value);
 
-  const [mediaList, setMediaList] = useState<any[]>([]);
+  const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [sort, setSort] = useState("newest");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const triggerFileUpload = () => fileInputRef.current?.click();
@@ -32,7 +66,7 @@ export function MediaUpload({ value = [], onChange }: any) {
   /* -------------------------------------------------------------------------- */
   useEffect(() => {
     if (onChange) onChange(files);
-  }, [files]);
+  }, [files, onChange]);
 
   useEffect(() => {
     setFiles(value || []);
@@ -64,7 +98,7 @@ export function MediaUpload({ value = [], onChange }: any) {
       });
 
       const raw = await res.text();
-      let data: any = null;
+      let data: { uploads?: MediaItem[]; raw?: string } | null = null;
 
       try {
         data = raw ? JSON.parse(raw) : null;
@@ -82,7 +116,7 @@ export function MediaUpload({ value = [], onChange }: any) {
       }
 
       // Normalize uploaded data
-      const uploaded = (data?.uploads || []).map((u: any) => ({
+      const uploaded = (data?.uploads || []).map((u) => ({
         ...u,
         id: u.slug,
       }));
@@ -105,18 +139,33 @@ export function MediaUpload({ value = [], onChange }: any) {
   /* -------------------------------------------------------------------------- */
   /*                        FETCH EXISTING MEDIA FOR MODAL                      */
   /* -------------------------------------------------------------------------- */
-  const fetchMedia = async () => {
+  const fetchMedia = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/media/list");
-      const data = await res.json();
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "24",
+        sort,
+      });
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
+
+      const res = await fetch(`/api/media/list?${params.toString()}`);
+      const data = (await res.json()) as MediaListResponse;
       setMediaList(data.media || []);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error("Failed to load media:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, sort]);
+
+  useEffect(() => {
+    if (!openDialog) return;
+    fetchMedia();
+  }, [fetchMedia, openDialog]);
 
   /* -------------------------------------------------------------------------- */
   /*                                REMOVE FROM UI                               */
@@ -128,7 +177,7 @@ export function MediaUpload({ value = [], onChange }: any) {
   /* -------------------------------------------------------------------------- */
   /*                                  REORDER                                   */
   /* -------------------------------------------------------------------------- */
-  const handleReorder = (newOrder: any[]) => {
+  const handleReorder = (newOrder: UploadingMediaItem[]) => {
     setFiles(newOrder);
   };
 
@@ -195,7 +244,9 @@ export function MediaUpload({ value = [], onChange }: any) {
         open={openDialog}
         onOpenChange={(v) => {
           setOpenDialog(v);
-          if (v) fetchMedia();
+          if (v) {
+            setPage(1);
+          }
         }}
       >
         <DialogContent className=" w-[55vw] max-w-[55vw] !sm:max-w-[55vw] !max-w-[55vw] max-h-[85vh] overflow-hidden /* <— IMPORTANT: no scroll here */ mt-[1vh] mb-[1vh] rounded-xl p-0 ">
@@ -205,14 +256,48 @@ export function MediaUpload({ value = [], onChange }: any) {
             </DialogHeader>
 
             <div className="px-6 flex items-center gap-3 pb-4">
-              <Input placeholder="Search files" className="flex-1" />
-              <Button variant="outline" size="sm">
-                <Funnel className="h-4 w-4 mr-1" /> Filters
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search files"
+                  className="flex-1 pl-9"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setPage(1);
+                      setSearch(searchInput);
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setPage(1);
+                  setSearch(searchInput);
+                }}
+              >
+                Search
               </Button>
               <Button variant="outline" size="sm">
-                <SortAsc className="h-4 w-4 mr-1" /> Sort
+                <SortAsc className="h-4 w-4 mr-1" />
+                <select
+                  value={sort}
+                  onChange={(e) => {
+                    setPage(1);
+                    setSort(e.target.value);
+                  }}
+                  className="bg-transparent text-sm outline-none"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="name-asc">Name A-Z</option>
+                  <option value="name-desc">Name Z-A</option>
+                </select>
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" disabled>
                 <LayoutGrid className="h-4 w-4" />
               </Button>
             </div>
@@ -233,7 +318,7 @@ export function MediaUpload({ value = [], onChange }: any) {
             <div className="px-6 pb-6 overflow-y-auto max-h-[45vh] no-scrollbar">
               {loading ? (
                 <p className="text-center py-10 text-gray-500">Loading...</p>
-              ) : (
+              ) : mediaList.length ? (
                 <div className="grid grid-cols-6 gap-5 mt-5">
                   {mediaList.map((item) => {
                     const selected = files.some((f) => f.id === item.slug);
@@ -278,9 +363,13 @@ export function MediaUpload({ value = [], onChange }: any) {
                         />
 
                         <div className="aspect-square bg-gray-100 rounded-md overflow-hidden">
-                          <img
+                          <Image
                             src={item.url}
-                            className="w-full h-full object-cover"
+                            alt={item.filename || item.name || "Media"}
+                            width={320}
+                            height={320}
+                            className="h-full w-full object-cover"
+                            unoptimized
                           />
                         </div>
 
@@ -291,10 +380,33 @@ export function MediaUpload({ value = [], onChange }: any) {
                     );
                   })}
                 </div>
+              ) : (
+                <p className="py-10 text-center text-gray-500">No media found.</p>
               )}
             </div>
 
             <DialogFooter className="px-6 pb-6">
+              <div className="mr-auto flex items-center gap-2 text-sm text-muted-foreground">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage((current) => current - 1)}
+                >
+                  Previous
+                </Button>
+                <span>
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  Next
+                </Button>
+              </div>
               <Button variant="outline" onClick={() => setOpenDialog(false)}>
                 Cancel
               </Button>

@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import ViewFeature from "@/components/views/features";
 import ViewHeader from "@/components/views/header";
 import ViewHero from "@/components/views/hero";
 import HomeProductListScreen from "@/screens/views/products/HomeProductListScreen";
+
+export const metadata: Metadata = {
+  title: "Storefront",
+};
 
 export default function ViewPage() {
   return (

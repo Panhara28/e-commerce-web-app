@@ -1,10 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import Asidebar from "../asidebar";
 import CloseSidebarMobile from "../close-sidebar-mobile";
 import MainLayout from "../main-layout";
 import MobileHeader from "../mobile-header";
-import TabNavigation from "../tab-navigation";
 import Topbar from "../topbar";
 
 export default function LayoutWrapper({
@@ -12,23 +13,33 @@ export default function LayoutWrapper({
 }: {
   children?: React.ReactNode;
 }) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("sidebar-collapsed") === "true";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem("sidebar-collapsed", String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
   return (
     <>
-      <div className="min-h-screen bg-background flex flex-col md:flex-row">
+      <div className="flex h-screen overflow-hidden bg-background md:flex-row">
         <MobileHeader />
-        {/* Sidebar */}
-        <Asidebar />
+        <Asidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+        />
         <MainLayout>
-          {/* Top Bar */}
-          <Topbar />
-          {/* Tabs Navigation */}
-          {/* <TabNavigation /> */}
-          {/* Close Sidebar on Mobile when navigating */}
+          <Topbar
+            sidebarCollapsed={sidebarCollapsed}
+            onToggleSidebar={() => setSidebarCollapsed((current) => !current)}
+          />
           <CloseSidebarMobile />
-          <div className="px-20 md:px-20 py-4">{children}</div>
-          {/* Hero Banner */}
-          {/* Bottom Spacing */}
-          <div className="h-12" />
+          <div className="flex-1 overflow-y-auto px-4 py-4 md:px-8 xl:px-10">
+            {children}
+            <div className="h-12" />
+          </div>
         </MainLayout>
       </div>
     </>

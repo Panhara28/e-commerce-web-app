@@ -2,12 +2,15 @@
 
 import { X, Grip as Grip2, Trash2, Plus } from "lucide-react";
 import { useState, useEffect, useMemo, startTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import VariantList from "./variant-list";
 import { Card, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import RichText from "../ui/rich-text";
 import { MediaUpload } from "../media-upload";
+import ProductThumbnailSelector from "../products/product-thumbnail-selector";
 import {
   Select,
   SelectContent,
@@ -57,6 +60,7 @@ export type Variant = {
 };
 
 type MediaFile = {
+  id?: string;
   url: string;
   name?: string;
   size?: number;
@@ -79,7 +83,14 @@ interface ProductForm {
 
 const STRUCTURE_KEY = "variant_data_v1";
 
+const toNullableNumber = (value: string) =>
+  value.trim() === "" ? null : Number(value);
+
+const toNullableInt = (value: string) =>
+  value.trim() === "" ? null : parseInt(value, 10);
+
 export default function Variants() {
+  const router = useRouter();
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const { setCategories } = useCategories();
   const [resetKey, setResetKey] = useState(0);
@@ -88,8 +99,17 @@ export default function Variants() {
     { name: string; values: string[] }[]
   >([]);
 
-  const [output, setOutput] = useState<{ variants: Variant[] }>({
-    variants: [],
+  const [output, setOutput] = useState<{ variants: Variant[] }>(() => {
+    if (typeof window === "undefined") {
+      return { variants: [] };
+    }
+
+    try {
+      const raw = window.localStorage.getItem(STRUCTURE_KEY);
+      return raw ? JSON.parse(raw) : { variants: [] };
+    } catch {
+      return { variants: [] };
+    }
   });
 
   const [, setIsGenerating] = useState(false);
@@ -112,16 +132,24 @@ export default function Variants() {
   const persistStructure = (data: { variants: Variant[] }) =>
     localStorage.setItem(STRUCTURE_KEY, JSON.stringify(data));
 
-  const defaultVariants = ["Size", "Color", "Material"];
+  const moveMediaToFront = (identifier: string) => {
+    setMediaFiles((prev) => {
+      const targetIndex = prev.findIndex(
+        (file) => String(file.id || file.url) === identifier,
+      );
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STRUCTURE_KEY);
-      setOutput(raw ? JSON.parse(raw) : { variants: [] });
-    } catch {
-      setOutput({ variants: [] });
-    }
-  }, []);
+      if (targetIndex <= 0) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const [selected] = next.splice(targetIndex, 1);
+      next.unshift(selected);
+      return next;
+    });
+  };
+
+  const defaultVariants = ["Size", "Color", "Material"];
 
   const getPlaceholder = (name: string) => {
     const n = name.toLowerCase();
@@ -318,7 +346,7 @@ export default function Variants() {
     } = productForm;
 
     if (!title || !price || !categoryId) {
-      alert("⚠️ Please fill all required product fields!");
+      toast.error("Please fill all required product fields.");
       return;
     }
 
@@ -328,12 +356,12 @@ export default function Variants() {
       categoryId: parseInt(categoryId),
       productCode: productCode?.trim() || "",
       status: status || "DRAFT",
-      price: parseFloat(price) || 0,
-      salePriceHold: parseFloat(salePriceHold) || 0,
-      discountHold: parseFloat(discountHold) || 0,
-      salePricePremium: parseFloat(salePricePremium) || 0,
-      discountPremium: parseFloat(discountPremium) || 0,
-      discount: parseInt(productForm.discount) || 0,
+      price: Number(price),
+      salePriceHold: toNullableNumber(salePriceHold),
+      discountHold: toNullableNumber(discountHold),
+      salePricePremium: toNullableNumber(salePricePremium),
+      discountPremium: toNullableNumber(discountPremium),
+      discount: toNullableInt(productForm.discount),
 
       variants: output.variants.flatMap((v: Variant): FlatVariant[] =>
         v.sub_variants && v.sub_variants.length > 0
@@ -375,8 +403,9 @@ export default function Variants() {
 
       const data = await response.json();
 
-      if (response.ok && data.status === "ok") {
-        alert(`✅ ${data.message}`);
+      if (response.ok && (data.success === true || data.status === "ok")) {
+        toast.success(data.message || "Product has create successfully");
+        const createdSlug = data?.data?.slug as string | undefined;
 
         setProductForm({
           title: "",
@@ -398,11 +427,16 @@ export default function Variants() {
         setMediaFiles([]);
         setCategories([]);
         setResetKey(Date.now());
+
+        if (createdSlug) {
+          router.push(`/products/edit/${createdSlug}`);
+        }
       } else {
-        alert(data.message || "Failed to create product!");
+        toast.error(data.message || data.error || "Failed to create product!");
       }
     } catch (error) {
       console.log("Network error while creating product!", error);
+      toast.error("Network error while creating product!");
     }
   };
 
@@ -441,6 +475,11 @@ export default function Variants() {
                 <h6 className="text-sm py-1">Media</h6>
                 <MediaUpload value={mediaFiles} onChange={setMediaFiles} />
               </div>
+
+              <ProductThumbnailSelector
+                files={mediaFiles}
+                onSelect={moveMediaToFront}
+              />
 
               <div className="flex flex-wrap">
                 {/* Category */}
@@ -676,6 +715,7 @@ export default function Variants() {
                     {output.variants.length > 0 && (
                       <VariantList
                         data={output}
+                        mediaList={mediaFiles}
                         onVariantsChange={(updated) => {
                           const newData = { variants: updated };
                           setOutput(newData);

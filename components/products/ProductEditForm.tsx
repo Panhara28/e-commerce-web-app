@@ -3,12 +3,14 @@
 import { useState, useEffect, useMemo, startTransition, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, X, Grip as Grip2, Trash2, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { Card, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import RichText from "../ui/rich-text";
 import { MediaUpload } from "../media-upload";
+import ProductThumbnailSelector from "./product-thumbnail-selector";
 import {
   Select,
   SelectContent,
@@ -68,6 +70,7 @@ type FlatVariant = {
 };
 
 type MediaFile = {
+  id: string;
   url: string;
   name?: string;
   size?: number;
@@ -88,9 +91,17 @@ interface ProductForm {
   discountPremium: string;
 }
 type ProductMedia = {
+  id?: string | number;
+  slug?: string;
   url: string;
 };
 const STRUCTURE_KEY = "variant_data_v1";
+
+const toNullableNumber = (value: string) =>
+  value.trim() === "" ? null : Number(value);
+
+const toNullableInt = (value: string) =>
+  value.trim() === "" ? null : parseInt(value, 10);
 
 /* -------------------------------------------------------------------------- */
 /* MAIN EDIT COMPONENT                                                        */
@@ -132,6 +143,23 @@ export default function ProductEditForm() {
 
   const persistStructure = (data: { variants: Variant[] }) =>
     localStorage.setItem(STRUCTURE_KEY, JSON.stringify(data));
+
+  const moveMediaToFront = (identifier: string) => {
+    setMediaFiles((prev) => {
+      const targetIndex = prev.findIndex(
+        (file) => String(file.id || file.url) === identifier,
+      );
+
+      if (targetIndex <= 0) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const [selected] = next.splice(targetIndex, 1);
+      next.unshift(selected);
+      return next;
+    });
+  };
 
   const defaultVariants = ["Size", "Color", "Material"];
 
@@ -436,22 +464,22 @@ export default function ProductEditForm() {
     const p = productForm;
 
     if (!p.title || !p.price || !p.categoryId) {
-      alert("⚠️ Please fill all required product fields!");
+      toast.error("Please fill all required product fields.");
       return;
     }
 
     const payload = {
       title: p.title.trim(),
-      description: productForm.description,
+      description: (descriptionRef.current as SerializedEditorState | null) ?? productForm.description,
       categoryId: Number(p.categoryId),
       productCode: p.productCode || "",
       status: p.status,
-      price: parseFloat(p.price),
-      salePriceHold: parseFloat(p.salePriceHold) || 0,
-      discountHold: parseFloat(p.discountHold) || 0,
-      salePricePremium: parseFloat(p.salePricePremium) || 0,
-      discountPremium: parseFloat(p.discountPremium) || 0,
-      discount: parseFloat(p.discount) || 0,
+      price: Number(p.price),
+      salePriceHold: toNullableNumber(p.salePriceHold),
+      discountHold: toNullableNumber(p.discountHold),
+      salePricePremium: toNullableNumber(p.salePricePremium),
+      discountPremium: toNullableNumber(p.discountPremium),
+      discount: toNullableInt(p.discount),
 
       variants: output.variants.flatMap((v: Variant) =>
         v.sub_variants.length > 0
@@ -489,13 +517,14 @@ export default function ProductEditForm() {
 
       const data = await response.json();
 
-      if (response.ok && data.status === "ok") {
-        alert("✅ Product updated successfully!");
+      if (response.ok && (data.success === true || data.status === "ok")) {
+        toast.success(data.message || "Product has update successfully");
       } else {
-        alert(data.message || "Failed to update product!");
+        toast.error(data.message || data.error || "Failed to update product!");
       }
     } catch (error) {
       console.log("Network error while updating product!", error);
+      toast.error("Network error while updating product!");
     }
   };
 
@@ -523,24 +552,30 @@ export default function ProductEditForm() {
         else descriptionJSON = defaultEmptyLexicalState();
 
         setProductForm({
-          title: p.title,
+          title: p.title || "",
           description: descriptionJSON,
-          categoryId: p.categoryId,
+          categoryId: p.categoryId ? String(p.categoryId) : "",
           productCode: p.productCode || "",
-          status: p.status,
-          price: p.price,
-          discount: p.discount,
-          salePriceHold: p.salePriceHold,
-          discountHold: p.discountHold,
-          salePricePremium: p.salePricePremium,
-          discountPremium: p.discountPremium,
+          status: p.status || "DRAFT",
+          price: p.price != null ? String(p.price) : "",
+          discount: p.discount != null ? String(p.discount) : "",
+          salePriceHold: p.salePriceHold != null ? String(p.salePriceHold) : "",
+          discountHold: p.discountHold != null ? String(p.discountHold) : "",
+          salePricePremium: p.salePricePremium != null ? String(p.salePricePremium) : "",
+          discountPremium: p.discountPremium != null ? String(p.discountPremium) : "",
         });
 
         descriptionRef.current = descriptionJSON;
 
-        const media = (p.MediaProductDetails || []).map((m: ProductMedia) => ({
-          url: m.url,
-        }));
+        const media = [...(p.MediaProductDetails || []), ...(p.media || [])]
+          .map((m: ProductMedia) => ({
+            id: String(m.slug || m.id || m.url),
+            url: m.url,
+          }))
+          .filter(
+            (item, index, items) =>
+              items.findIndex((candidate) => candidate.url === item.url) === index,
+          );
         setMediaFiles(media);
 
         const grouped = convertFlatVariants(p.variants);
@@ -609,6 +644,11 @@ export default function ProductEditForm() {
                 <h6 className="text-sm py-1">Media</h6>
                 <MediaUpload value={mediaFiles} onChange={setMediaFiles} />
               </div>
+
+              <ProductThumbnailSelector
+                files={mediaFiles}
+                onSelect={moveMediaToFront}
+              />
 
               <div className="flex flex-wrap">
                 {/* Category */}
@@ -872,6 +912,7 @@ export default function ProductEditForm() {
                     {output.variants.length > 0 && (
                       <VariantList
                         data={output}
+                        mediaList={mediaFiles}
                         onVariantsChange={(updated) => {
                           const newData = { variants: updated };
                           setOutput(newData);

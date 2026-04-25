@@ -7,7 +7,9 @@ export default function MainLayout({
 }) {
   return (
     <>
-      <main className="flex-1 w-full overflow-auto">{children}</main>
+      <main className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
+        {children}
+      </main>
     </>
   );
 }

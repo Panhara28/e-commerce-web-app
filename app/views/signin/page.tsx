@@ -3,8 +3,8 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export const metadata = {
-  title: "Sign In | SportHub",
-  description: "Sign into your SportHub account",
+  title: "Sign In",
+  description: "Sign into your Tsportcambodia account",
 }
 
 export default function SignInPage() {

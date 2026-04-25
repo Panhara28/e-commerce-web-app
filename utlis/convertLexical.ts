@@ -9,9 +9,10 @@ export async function lexicalJSONtoHTML(lexicalJson: any) {
 
   try {
     const editor = createEditor();
+    const safeState = ensureLexicalState(lexicalJson);
 
     // Lexical requires JSON string format
-    const jsonString = JSON.stringify(lexicalJson);
+    const jsonString = JSON.stringify(safeState);
     const editorState = editor.parseEditorState(jsonString);
 
     editor.setEditorState(editorState);
@@ -61,7 +62,7 @@ export async function convertHTMLtoLexicalJSON(htmlString: string) {
     });
 
     // Return Lexical JSON
-    return editor.getEditorState().toJSON();
+    return ensureLexicalState(editor.getEditorState().toJSON());
   } catch (err) {
     console.error("❌ convertHTMLtoLexicalJSON failed:", err);
     return defaultEmptyLexicalState();
@@ -75,7 +76,35 @@ export function defaultEmptyLexicalState() {
       format: "",
       indent: 0,
       version: 1,
-      children: [],
+      children: [
+        {
+          type: "paragraph",
+          format: "",
+          indent: 0,
+          version: 1,
+          direction: null,
+          textFormat: 0,
+          textStyle: "",
+          children: [],
+        },
+      ],
     },
   };
+}
+
+export function ensureLexicalState(value: any) {
+  if (!value || typeof value !== "object") {
+    return defaultEmptyLexicalState();
+  }
+
+  const root = value.root;
+  if (!root || typeof root !== "object") {
+    return defaultEmptyLexicalState();
+  }
+
+  if (!Array.isArray(root.children) || root.children.length === 0) {
+    return defaultEmptyLexicalState();
+  }
+
+  return value;
 }

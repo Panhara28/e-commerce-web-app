@@ -12,7 +12,9 @@ type NavDropdownItemProps = {
   badge?: string;
   isExpanded?: boolean;
   onToggle?: () => void;
-  items?: { label: string; href: string }[];
+  collapsed?: boolean;
+  onExpandSidebar?: () => void;
+  items?: { label: string; href: string; badge?: string }[];
 };
 
 export default function NavDropdownItem({
@@ -21,6 +23,8 @@ export default function NavDropdownItem({
   badge,
   isExpanded = false,
   onToggle,
+  collapsed = false,
+  onExpandSidebar,
   items = [],
 }: NavDropdownItemProps) {
   const pathname = usePathname();
@@ -39,9 +43,16 @@ export default function NavDropdownItem({
     <div className="space-y-1">
       {/* Main dropdown header */}
       <button
-        onClick={onToggle}
+        onClick={() => {
+          if (collapsed) {
+            onExpandSidebar?.();
+          }
+          onToggle?.();
+        }}
+        title={collapsed ? label : undefined}
         className={cn(
-          "flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm transition-colors",
+          "flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
+          collapsed && "justify-center px-0",
           hasActiveChild
             ? "bg-sidebar-primary text-white font-medium"
             : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
@@ -49,22 +60,24 @@ export default function NavDropdownItem({
       >
         <div className="flex items-center gap-3">
           {icon && <span className="text-muted-foreground">{icon}</span>}
-          <span>{label}</span>
-          {badge && (
+          {!collapsed ? <span>{label}</span> : null}
+          {!collapsed && badge ? (
             <span className="ml-2 text-xs bg-sidebar-accent text-foreground rounded-md px-1.5 py-0.5">
               {badge}
             </span>
-          )}
+          ) : null}
         </div>
-        {isExpanded ? (
-          <ChevronDown size={16} className="text-muted-foreground" />
-        ) : (
-          <ChevronRight size={16} className="text-muted-foreground" />
-        )}
+        {!collapsed ? (
+          isExpanded ? (
+            <ChevronDown size={16} className="text-muted-foreground" />
+          ) : (
+            <ChevronRight size={16} className="text-muted-foreground" />
+          )
+        ) : null}
       </button>
 
       {/* Dropdown content */}
-      {isExpanded && items.length > 0 && (
+      {!collapsed && isExpanded && items.length > 0 && (
         <div className="ml-8 flex flex-col gap-1">
           {items.map((item) => {
             const isActive = pathname === item.href;
@@ -73,13 +86,18 @@ export default function NavDropdownItem({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "text-sm px-3 py-1.5 rounded-md transition-colors",
+                  "flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
                   isActive
                     ? "bg-sidebar-accent text-foreground font-medium"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                 )}
               >
-                {item.label}
+                <span>{item.label}</span>
+                {item.badge ? (
+                  <span className="rounded-md bg-sidebar-accent px-1.5 py-0.5 text-xs text-foreground">
+                    {item.badge}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

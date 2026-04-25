@@ -35,6 +35,7 @@ export type Variant = {
 };
 
 type MediaFile = {
+  id?: string;
   url: string;
   name?: string;
   size?: number;
@@ -44,6 +45,7 @@ type MediaFile = {
 type Props = {
   data: { variants: Variant[] };
   onVariantsChange?: (updated: Variant[]) => void;
+  mediaList?: MediaFile[];
 };
 
 /* -------------------------------------------------------------------------- */
@@ -62,7 +64,7 @@ function setField<T extends Variant | SubVariant>(
 /*                             COMPONENT START                                 */
 /* -------------------------------------------------------------------------- */
 
-export default function VariantList({ data, onVariantsChange }: Props) {
+export default function VariantList({ data, onVariantsChange, mediaList: productMediaList = [] }: Props) {
   const [variants, setVariants] = useState<Variant[]>(data.variants);
   const [expanded, setExpanded] = useState<number[]>([]);
   const prevJson = useRef<string>("");
@@ -87,10 +89,19 @@ export default function VariantList({ data, onVariantsChange }: Props) {
     sIndex: null,
   });
 
-  const [mediaList, setMediaList] = useState<MediaFile[]>([]);
+  const [mediaList, setMediaList] = useState<MediaFile[]>(productMediaList);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    setMediaList(productMediaList);
+  }, [productMediaList]);
+
   const fetchMedia = async () => {
+    if (productMediaList.length > 0) {
+      setMediaList(productMediaList);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/media/list");

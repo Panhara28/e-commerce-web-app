@@ -78,10 +78,11 @@ export default function MediaDialog({
               <div className="grid grid-cols-6 gap-5 mt-5">
                 {mediaList.map((item: any) => {
                   const active = selectedUrl === item.url;
+                  const itemKey = item.slug || item.id || item.url;
 
                   return (
                     <div
-                      key={item.slug}
+                      key={itemKey}
                       className={`border rounded-lg p-2 cursor-pointer transition relative ${
                         active
                           ? "ring-2 ring-primary"
@@ -89,9 +90,9 @@ export default function MediaDialog({
                       }`}
                       onClick={() => {
                         onSelect({
-                          id: item.slug,
+                          id: itemKey,
                           url: item.url,
-                          filename: item.filename,
+                          filename: item.filename || item.name,
                         });
                         onOpenChange(false);
                       }}
@@ -104,7 +105,7 @@ export default function MediaDialog({
                       </div>
 
                       <div className="text-xs text-center mt-2 text-gray-600 truncate">
-                        {item.filename}
+                        {item.filename || item.name || item.url}
                       </div>
                     </div>
                   );

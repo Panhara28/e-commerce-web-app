@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import LayoutWrapper from "@/components/layout-wrapper";
 import Table from "@/components/table";
 import { Card } from "@/components/ui/card";
@@ -17,6 +17,27 @@ type ProductListItem = {
   price: number;
   category: string | null;
   slug: string;
+};
+
+type ProductApiItem = {
+  id: number;
+  slug: string;
+  title: string | null;
+  productCode: string | null;
+  price: number;
+  Category?: {
+    name?: string | null;
+    title?: string | null;
+  } | null;
+  variants?: Array<{
+    barcode?: string | null;
+  }>;
+};
+
+type ProductListResponse = {
+  status: "ok" | "error";
+  total: number;
+  data: ProductApiItem[];
 };
 
 type FilterType = "input" | "select";
@@ -55,7 +76,7 @@ export default function ProductListScreen() {
   /* -----------------------------------------------------------
      Load Products (API call)
   ----------------------------------------------------------- */
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(pageSize),
@@ -65,13 +86,22 @@ export default function ProductListScreen() {
     });
 
     const res = await fetch(`/api/products/lists?${params.toString()}`);
-    const json = await res.json();
+    const json = (await res.json()) as ProductListResponse;
 
     if (json.status === "ok") {
-      setData(json.data);
+      setData(
+        json.data.map((item) => ({
+          id: item.id,
+          slug: item.slug,
+          name: item.title || "-",
+          sku: item.productCode || item.variants?.[0]?.barcode || "-",
+          price: item.price,
+          category: item.Category?.name || item.Category?.title || null,
+        })),
+      );
       setTotal(json.total);
     }
-  };
+  }, [filters.category, filters.name, filters.sku, page]);
 
   /* -----------------------------------------------------------
      useEffect (✔ FIXED so no ESLint warning)
@@ -89,7 +119,7 @@ export default function ProductListScreen() {
     return () => {
       ignore = true;
     };
-  }, [page, filters]); // dependencies
+  }, [loadProducts]); // dependencies
 
   /* -------- Delete Product -------- */
   const handleDelete = async (row: Record<string, unknown>) => {

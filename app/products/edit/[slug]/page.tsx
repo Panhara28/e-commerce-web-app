@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import LayoutWrapper from "@/components/layout-wrapper";
-import EditProduct from "@/components/products/edit-product";
 import ProductEditForm from "@/components/products/ProductEditForm";
+
+export const metadata: Metadata = {
+  title: "Edit Product",
+};
 
 export default function EditProductPage() {
   return (
