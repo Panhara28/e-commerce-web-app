@@ -577,11 +577,13 @@ export default function OrderTrackingScreen() {
               <label className="grid gap-2">
                 <span className="text-sm font-medium">Delivery fee</span>
                 <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
                   value={deliveryFee}
-                  onChange={(event) => setDeliveryFee(event.target.value)}
+                  onChange={(event) =>
+                    setDeliveryFee(event.target.value.replace(/[^0-9.]/g, ""))
+                  }
                   placeholder="0.00"
                 />
               </label>

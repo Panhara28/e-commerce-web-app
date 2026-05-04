@@ -13,10 +13,11 @@ export default function LayoutWrapper({
 }: {
   children?: React.ReactNode;
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("sidebar-collapsed") === "true";
-  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    setSidebarCollapsed(window.localStorage.getItem("sidebar-collapsed") === "true");
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem("sidebar-collapsed", String(sidebarCollapsed));

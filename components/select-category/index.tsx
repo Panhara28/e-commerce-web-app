@@ -27,6 +27,10 @@ export function SelectCategory({
   defaultValue?: number; // ⭐ Added
 }) {
   const { categories, loading } = useCategories();
+  const categoryList = React.useMemo(
+    () => (Array.isArray(categories) ? categories : []),
+    [categories],
+  );
 
   const [open, setOpen] = React.useState(false);
   const [path, setPath] = React.useState<any[]>([]);
@@ -38,18 +42,20 @@ export function SelectCategory({
      Load initial category tree
   --------------------------------------------- */
   React.useEffect(() => {
-    if (!loading && categories.length > 0) {
-      setCurrentList(categories);
+    if (!loading && categoryList.length > 0) {
+      setCurrentList(categoryList);
     }
-  }, [loading, categories]);
+  }, [loading, categoryList]);
 
   /* ---------------------------------------------
      ⭐ AUTO-SELECT DEFAULT CATEGORY ON EDIT
   --------------------------------------------- */
   React.useEffect(() => {
-    if (!defaultValue || loading || categories.length === 0) return;
+    if (!defaultValue || loading || categoryList.length === 0) return;
 
     const findPath = (cats: any[], id: number, chain: any[] = []): any[] | null => {
+      if (!Array.isArray(cats)) return null;
+
       for (const c of cats) {
         if (c.id === id) return [...chain, c];
         if (c.children?.length) {
@@ -60,7 +66,7 @@ export function SelectCategory({
       return null;
     };
 
-    const fullChain = findPath(categories, defaultValue);
+    const fullChain = findPath(categoryList, defaultValue);
 
     if (fullChain) {
       setSelectedPath(fullChain);
@@ -71,7 +77,7 @@ export function SelectCategory({
       // notify parent
       startTransition(() => onSelect(defaultValue));
     }
-  }, [defaultValue, categories, loading]);
+  }, [defaultValue, categoryList, loading, onSelect]);
 
   /* ---------------------------------------------
      Reset from parent
@@ -82,19 +88,20 @@ export function SelectCategory({
     setValue("");
     setSelectedPath([]);
     setPath([]);
-    setCurrentList(categories);
+    setCurrentList(categoryList);
     setOpen(false);
-  }, [resetSignal, categories]);
+  }, [resetSignal, categoryList]);
 
   /* ---------------------------------------------
      Helpers
   --------------------------------------------- */
   const getListFromPath = (pathArr: any[]) => {
-    let list = categories;
+    let list = categoryList;
 
     for (const node of pathArr) {
+      if (!Array.isArray(list)) return categoryList;
       const found = list.find((c) => c.id === node.id);
-      if (!found) return categories;
+      if (!found) return categoryList;
       list = found.children ?? [];
     }
 
@@ -171,7 +178,7 @@ export function SelectCategory({
                   setValue("");
                   setSelectedPath([]);
                   setPath([]);
-                  setCurrentList(categories);
+                  setCurrentList(categoryList);
                 }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black"
               >
