@@ -17,6 +17,13 @@ async function proxy(
   headers.delete("host");
   headers.delete("content-length");
 
+  // Individual screens call fetch("/api/...") without attaching a token, so
+  // inject it here from the login cookie rather than touching every call site.
+  if (!headers.has("authorization")) {
+    const token = request.cookies.get("admin_token")?.value;
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
+
   const init: RequestInit = {
     method: request.method,
     headers,

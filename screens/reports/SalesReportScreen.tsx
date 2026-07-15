@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   BarChart3,
   CalendarDays,
+  Download,
   Package,
   RefreshCw,
   ShoppingBag,
@@ -165,6 +166,26 @@ export default function SalesReportScreen({ type }: Props) {
     setEndDate("");
   };
 
+  const downloadExcel = async () => {
+    if (!report?.orders.length) return;
+
+    const rows = report.orders.map((order) => ({
+      "Order #": order.id,
+      Customer: customerName(order),
+      Email: order.customer.email,
+      Status: formatStatus(order.status),
+      Items: order.items.reduce((total, item) => total + item.quantity, 0),
+      Date: order.orderedAtFormatted,
+      Total: order.totalAmount,
+    }));
+
+    const xlsx = await import("xlsx");
+    const worksheet = xlsx.utils.json_to_sheet(rows);
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Report");
+    xlsx.writeFile(workbook, `${type}-sales-report.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -175,10 +196,20 @@ export default function SalesReportScreen({ type }: Props) {
           </p>
         </div>
 
-        <Button variant="outline" onClick={loadReport} disabled={loading}>
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={downloadExcel}
+            disabled={loading || !report?.orders.length}
+          >
+            <Download className="h-4 w-4" />
+            Download Excel
+          </Button>
+          <Button variant="outline" onClick={loadReport} disabled={loading}>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card className="gap-4 px-6 py-5">

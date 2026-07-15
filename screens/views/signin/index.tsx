@@ -3,30 +3,56 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Eye, EyeOff, Mail, Lock } from "lucide-react"
 
 export function SignInForm() {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     setIsLoading(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsLoading(false)
-    console.log("Sign in with:", { email, password })
+
+    try {
+      const res = await fetch("/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      const result = await res.json()
+
+      if (!res.ok || !result.token) {
+        setError(result.error || "Invalid email or password")
+        return
+      }
+
+      document.cookie = `admin_token=${result.token}; path=/; max-age=${60 * 60 * 24 * 7}`
+      router.push("/")
+    } catch {
+      setError("Unable to sign in. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <div className="space-y-6">
       <Card className="border-border bg-card/50 backdrop-blur-sm p-0">
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {error && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           {/* Email Field */}
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-foreground flex items-center gap-2">

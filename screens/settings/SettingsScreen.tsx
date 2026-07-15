@@ -12,6 +12,7 @@ import {
   Plus,
   Save,
   Shield,
+  Trash2,
   User,
 } from "lucide-react";
 
@@ -291,6 +292,28 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
     } catch (err) {
       console.error(err);
       setBannerError("Failed to update banner.");
+    } finally {
+      setSavingBanner(null);
+    }
+  };
+
+  const deleteBanner = async (banner: BannerItem) => {
+    if (!window.confirm(`Delete banner "${banner.name}"?`)) return;
+
+    try {
+      setSavingBanner(banner.id);
+      setBannerError("");
+      setNotice("");
+      const res = await fetch(`/api/settings/banners/${banner.id}`, {
+        method: "DELETE",
+      });
+      const json = (await res.json()) as { success: boolean; message?: string };
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete banner");
+      setNotice("Banner deleted.");
+      await loadStoreSettings();
+    } catch (err) {
+      console.error(err);
+      setBannerError("Failed to delete banner.");
     } finally {
       setSavingBanner(null);
     }
@@ -637,10 +660,19 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
                         />
                       </Field>
                     </div>
-                    <Button onClick={() => saveBanner(banner)} disabled={savingBanner === banner.id}>
-                      {savingBanner === banner.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      Save
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={() => saveBanner(banner)} disabled={savingBanner === banner.id}>
+                        {savingBanner === banner.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Save
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => deleteBanner(banner)}
+                        disabled={savingBanner === banner.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))
