@@ -35,6 +35,7 @@ import {
   PrintableInvoice,
   type OrderInvoiceData,
 } from "@/screens/orders/components/invoice";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export type OrderStatus =
   | "PENDING"
@@ -204,14 +205,14 @@ export default function OrderListScreen({ status }: Props) {
       const json = (await res.json()) as OrdersResponse;
 
       if (!res.ok || json.status !== "ok") {
-        throw new Error("Failed to load orders");
+        throw new Error(getApiErrorMessage(json, "Failed to load orders"));
       }
 
       setOrders(json.data);
       setTotal(json.total);
     } catch (err) {
       console.error(err);
-      setError("Failed to load orders.");
+      setError(err instanceof Error ? err.message : "Failed to load orders.");
       setOrders([]);
       setTotal(0);
     } finally {
@@ -263,13 +264,13 @@ export default function OrderListScreen({ status }: Props) {
       const json = (await res.json()) as OrderDetailResponse;
 
       if (!res.ok || json.status !== "ok") {
-        throw new Error("Failed to load order");
+        throw new Error(getApiErrorMessage(json, "Failed to load order"));
       }
 
       setPreviewOrder(toInvoiceOrder(json.data));
     } catch (err) {
       console.error(err);
-      setPreviewError("Failed to load invoice preview.");
+      setPreviewError(err instanceof Error ? err.message : "Failed to load invoice preview.");
     } finally {
       setPreviewLoading(false);
     }

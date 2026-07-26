@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminUser, RoleOption } from "./types";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type Props = {
   mode: "create" | "edit";
@@ -63,7 +64,7 @@ export default function UserFormScreen({ mode, slug }: Props) {
         setLoading(true);
         const res = await fetch(`/api/users/${slug}`, { cache: "no-store" });
         const json = (await res.json()) as UserResponse;
-        if (!res.ok || !json.success) throw new Error("Failed to load user");
+        if (!res.ok || !json.success) throw new Error(getApiErrorMessage(json, "Failed to load user"));
 
         setName(json.data.name);
         setEmail(json.data.email);
@@ -71,7 +72,7 @@ export default function UserFormScreen({ mode, slug }: Props) {
         setProfilePicture(json.data.profilePicture || "");
       } catch (err) {
         console.error(err);
-        setError("Failed to load user.");
+        setError(err instanceof Error ? err.message : "Failed to load user.");
       } finally {
         setLoading(false);
       }
@@ -105,20 +106,24 @@ export default function UserFormScreen({ mode, slug }: Props) {
       );
       const json = (await res.json()) as UserResponse;
 
-      if (!res.ok || !json.success) throw new Error("Failed to save user");
+      if (!res.ok || !json.success) throw new Error(getApiErrorMessage(json, "Failed to save user"));
 
       if (isEdit) {
-        await fetch(`/api/users/${json.data.slug}/role`, {
+        const roleRes = await fetch(`/api/users/${json.data.slug}/role`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ roleId: Number(roleId) }),
         });
+        if (!roleRes.ok) {
+          const roleJson = await roleRes.json().catch(() => null);
+          throw new Error(getApiErrorMessage(roleJson, "Failed to assign role"));
+        }
       }
 
       router.push(`/users/${json.data.slug}`);
     } catch (err) {
       console.error(err);
-      setError("Failed to save user. Check the email and role.");
+      setError(err instanceof Error ? err.message : "Failed to save user.");
     } finally {
       setSaving(false);
     }

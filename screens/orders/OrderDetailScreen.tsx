@@ -34,6 +34,7 @@ import {
   PrintableInvoice,
   type OrderInvoiceData,
 } from "@/screens/orders/components/invoice";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type OrderDetail = {
   id: number;
@@ -135,13 +136,13 @@ export default function OrderDetailScreen({ slug }: Props) {
         const json = (await res.json()) as OrderDetailResponse;
 
         if (!res.ok || json.status !== "ok") {
-          throw new Error("Order not found");
+          throw new Error(getApiErrorMessage(json, "Order not found"));
         }
 
         setOrder(json.data);
       } catch (err) {
         console.error(err);
-        setError("Failed to load order.");
+        setError(err instanceof Error ? err.message : "Failed to load order.");
       } finally {
         setLoading(false);
       }

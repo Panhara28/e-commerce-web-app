@@ -26,6 +26,7 @@ import {
   defaultEmptyLexicalState,
 } from "@/utlis/convertLexical";
 import { SerializedEditorState } from "lexical";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
@@ -111,6 +112,7 @@ export default function ProductEditForm() {
   const params = useParams();
   const slug = params?.slug as string;
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [initialLoaded, setInitialLoaded] = useState(false);
   const descriptionRef = useRef<unknown>(null);
 
@@ -542,6 +544,10 @@ export default function ProductEditForm() {
 
         if (!isMounted) return;
 
+        if (!res.ok || !json.data) {
+          throw new Error(getApiErrorMessage(json, "Failed to load product"));
+        }
+
         const p = json.data;
 
         let descriptionJSON;
@@ -589,7 +595,10 @@ export default function ProductEditForm() {
         setLoading(false);
       } catch (err) {
         console.error("Failed to load product", err);
-        setLoading(false);
+        if (isMounted) {
+          setLoadError(err instanceof Error ? err.message : "Failed to load product");
+          setLoading(false);
+        }
       }
     })();
 
@@ -608,6 +617,14 @@ export default function ProductEditForm() {
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
+
+  if (loadError)
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {loadError}
+      </div>
+    );
+
   return (
     <>
       <div className="container mx-auto">

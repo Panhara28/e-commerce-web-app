@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getOrderStatusClass, formatStatus, type OrderStatus } from "@/screens/orders/OrderListScreen";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export type ReportType = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -144,13 +145,13 @@ export default function SalesReportScreen({ type }: Props) {
       const json = (await res.json()) as SalesReportResponse;
 
       if (!res.ok || !json.success) {
-        throw new Error("Failed to load report");
+        throw new Error(getApiErrorMessage(json, "Failed to load report"));
       }
 
       setReport(json);
     } catch (err) {
       console.error(err);
-      setError("Failed to load sales report.");
+      setError(err instanceof Error ? err.message : "Failed to load sales report.");
       setReport(null);
     } finally {
       setLoading(false);

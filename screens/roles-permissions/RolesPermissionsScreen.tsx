@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type PermissionAction = "create" | "read" | "update" | "delete";
 type PermissionModule = { id: number; name: string; label: string; description: string | null };
@@ -125,7 +126,7 @@ export default function RolesPermissionsScreen() {
   const loadModules = useCallback(async () => {
     const res = await fetch("/api/permissions/lists", { cache: "no-store" });
     const json = (await res.json()) as PermissionsResponse;
-    if (!res.ok || json.status !== "ok") throw new Error("Failed to load permission modules");
+    if (!res.ok || json.status !== "ok") throw new Error(getApiErrorMessage(json, "Failed to load permission modules"));
     setModules(json.modules || []);
   }, []);
 
@@ -134,7 +135,7 @@ export default function RolesPermissionsScreen() {
     if (search.trim()) params.set("search", search.trim());
     const res = await fetch(`/api/roles/lists?${params.toString()}`, { cache: "no-store" });
     const json = (await res.json()) as RolesResponse;
-    if (!res.ok || json.status !== "ok") throw new Error("Failed to load roles");
+    if (!res.ok || json.status !== "ok") throw new Error(getApiErrorMessage(json, "Failed to load roles"));
     setRoles(json.data);
     setTotal(json.total);
   }, [page, search]);
@@ -146,7 +147,7 @@ export default function RolesPermissionsScreen() {
       await Promise.all([loadModules(), loadRoles()]);
     } catch (err) {
       console.error(err);
-      setError("Failed to load roles and permissions.");
+      setError(err instanceof Error ? err.message : "Failed to load roles and permissions.");
     } finally {
       setLoading(false);
     }
@@ -179,14 +180,17 @@ export default function RolesPermissionsScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: roleName }),
       });
-      if (!res.ok) throw new Error("Failed to create role");
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to create role. The name may already exist."));
+      }
       setRoleName("");
       setIsAddRoleOpen(false);
       setNotice("Role created.");
       await loadRoles();
     } catch (err) {
       console.error(err);
-      setError("Failed to create role. The name may already exist.");
+      setError(err instanceof Error ? err.message : "Failed to create role.");
     } finally {
       setSaving(false);
     }
@@ -202,13 +206,16 @@ export default function RolesPermissionsScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: roleName }),
       });
-      if (!res.ok) throw new Error("Failed to update role");
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to update role"));
+      }
       setIsEditRoleOpen(false);
       setNotice("Role updated.");
       await loadRoles();
     } catch (err) {
       console.error(err);
-      setError("Failed to update role.");
+      setError(err instanceof Error ? err.message : "Failed to update role.");
     } finally {
       setSaving(false);
     }
@@ -224,7 +231,10 @@ export default function RolesPermissionsScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ moduleName, label: titleize(moduleName), description: moduleDescription }),
       });
-      if (!res.ok) throw new Error("Failed to create permission module");
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to create permission module"));
+      }
       setModuleName("");
       setModuleDescription("");
       setIsModuleOpen(false);
@@ -232,7 +242,7 @@ export default function RolesPermissionsScreen() {
       await loadModules();
     } catch (err) {
       console.error(err);
-      setError("Failed to create permission module.");
+      setError(err instanceof Error ? err.message : "Failed to create permission module.");
     } finally {
       setSaving(false);
     }
@@ -264,13 +274,16 @@ export default function RolesPermissionsScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ permissions }),
       });
-      if (!res.ok) throw new Error("Failed to save permissions");
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to save permissions"));
+      }
       setIsPermissionsOpen(false);
       setNotice("Permissions updated.");
       await loadRoles();
     } catch (err) {
       console.error(err);
-      setError("Failed to save role permissions.");
+      setError(err instanceof Error ? err.message : "Failed to save role permissions.");
     } finally {
       setSaving(false);
     }

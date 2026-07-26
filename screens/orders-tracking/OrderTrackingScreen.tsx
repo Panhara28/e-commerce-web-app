@@ -43,6 +43,7 @@ import {
   type OrderInvoiceData,
 } from "@/screens/orders/components/invoice";
 import { formatStatus, type OrderStatus } from "@/screens/orders/OrderListScreen";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type TrackingStatus =
   | "ORDER_RECEIVED"
@@ -180,11 +181,11 @@ export default function OrderTrackingScreen() {
       setError("");
       const res = await fetch(`/api/orders/tracking?${params.toString()}`, { cache: "no-store" });
       const json = (await res.json()) as TrackingResponse;
-      if (!res.ok || json.status !== "ok") throw new Error("Failed to load tracking orders");
+      if (!res.ok || json.status !== "ok") throw new Error(getApiErrorMessage(json, "Failed to load tracking orders"));
       setOrders(json.data);
     } catch (err) {
       console.error(err);
-      setError("Failed to load tracking orders.");
+      setError(err instanceof Error ? err.message : "Failed to load tracking orders.");
       setOrders([]);
       setSelectedIndex(0);
     } finally {
@@ -269,12 +270,15 @@ export default function OrderTrackingScreen() {
           fee: deliveryFee,
         }),
       });
-      if (!res.ok) throw new Error("Failed to change status");
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to change status"));
+      }
       setActionStatus(null);
       await loadOrders();
     } catch (err) {
       console.error(err);
-      setError("Failed to change order status.");
+      setError(err instanceof Error ? err.message : "Failed to change order status.");
     } finally {
       setSaving(false);
     }
@@ -331,15 +335,15 @@ export default function OrderTrackingScreen() {
         });
 
         if (!res.ok) {
-            const json = await res.json();
-            throw new Error(json.error || "Failed to add items");
+            const json = await res.json().catch(() => null);
+            throw new Error(getApiErrorMessage(json, "Failed to add items"));
         }
 
         setIsAddOnOpen(false);
         setAddOnItems([{ barcode: "", description: "", size: "", color: "", qty: "1", unitPrice: "", discount: "0" }]);
         await loadOrders();
-    } catch (err: any) {
-        alert(err.message);
+    } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to add items");
     } finally {
         setIsAddingItems(false);
     }
@@ -775,26 +779,21 @@ function toInvoiceOrder(order: TrackingOrder): OrderInvoiceData {
       quantity: item.quantity,
       price: item.price,
       total: item.total,
+      // The backend already resolves manual (non-catalog) line items into
+      // `product`/`variant` shape, so no client-side fallback is needed here.
       product: item.product
         ? {
             title: item.product.title,
             productCode: item.product.productCode,
           }
-        : item.manualDescription ? {
-            title: item.manualDescription,
-            productCode: item.manualBarcode,
-          } : null,
+        : null,
       variant: item.variant
         ? {
             size: item.variant.size,
             color: item.variant.color,
             barcode: item.variant.barcode,
           }
-        : (item.manualSize || item.manualColor) ? {
-            size: item.manualSize,
-            color: item.manualColor,
-            barcode: item.manualBarcode,
-          } : null,
+        : null,
     })),
   };
 }

@@ -48,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AdminUser, RoleOption, formatDate, initials } from "./types";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type UserListResponse = {
   status: "ok" | "error";
@@ -108,12 +109,12 @@ export default function UserListScreen() {
       setError("");
       const res = await fetch(`/api/users/lists?${params.toString()}`, { cache: "no-store" });
       const json = (await res.json()) as UserListResponse;
-      if (!res.ok || json.status !== "ok") throw new Error("Failed to load users");
+      if (!res.ok || json.status !== "ok") throw new Error(getApiErrorMessage(json, "Failed to load users"));
       setUsers(json.data);
       setTotal(json.total);
     } catch (err) {
       console.error(err);
-      setError("Failed to load users.");
+      setError(err instanceof Error ? err.message : "Failed to load users.");
       setUsers([]);
       setTotal(0);
     } finally {
@@ -181,14 +182,18 @@ export default function UserListScreen() {
         },
       );
       const json = (await res.json()) as UserResponse;
-      if (!res.ok || !json.success) throw new Error("Failed to save user");
+      if (!res.ok || !json.success) throw new Error(getApiErrorMessage(json, "Failed to save user"));
 
       if (mode === "edit") {
-        await fetch(`/api/users/${json.data.slug}/role`, {
+        const roleRes = await fetch(`/api/users/${json.data.slug}/role`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ roleId: Number(form.roleId) }),
         });
+        if (!roleRes.ok) {
+          const roleJson = await roleRes.json().catch(() => null);
+          throw new Error(getApiErrorMessage(roleJson, "Failed to assign role"));
+        }
       }
 
       setIsAddOpen(false);
@@ -198,7 +203,7 @@ export default function UserListScreen() {
       loadUsers();
     } catch (err) {
       console.error(err);
-      setFormError("Failed to save user. Check unique email and selected role.");
+      setFormError(err instanceof Error ? err.message : "Failed to save user.");
     } finally {
       setSaving(false);
     }
@@ -214,13 +219,16 @@ export default function UserListScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roleId: Number(assignRoleId) }),
       });
-      if (!res.ok) throw new Error("Failed to assign role");
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to assign role"));
+      }
       setIsAssignOpen(false);
       setSelectedUser(null);
       loadUsers();
     } catch (err) {
       console.error(err);
-      setFormError("Failed to assign role.");
+      setFormError(err instanceof Error ? err.message : "Failed to assign role.");
     } finally {
       setSaving(false);
     }

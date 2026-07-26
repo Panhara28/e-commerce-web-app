@@ -6,6 +6,7 @@ import Table from "@/components/table";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 /* -----------------------------------------------------------
    Types
@@ -56,6 +57,7 @@ export default function ProductListScreen() {
   const [data, setData] = useState<ProductListItem[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState("");
 
   const pageSize = 10;
 
@@ -85,10 +87,15 @@ export default function ProductListScreen() {
       category: filters.category,
     });
 
-    const res = await fetch(`/api/products/lists?${params.toString()}`);
-    const json = (await res.json()) as ProductListResponse;
+    try {
+      setError("");
+      const res = await fetch(`/api/products/lists?${params.toString()}`);
+      const json = (await res.json()) as ProductListResponse;
 
-    if (json.status === "ok") {
+      if (!res.ok || json.status !== "ok") {
+        throw new Error(getApiErrorMessage(json, "Failed to load products"));
+      }
+
       setData(
         json.data.map((item) => ({
           id: item.id,
@@ -100,6 +107,11 @@ export default function ProductListScreen() {
         })),
       );
       setTotal(json.total);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to load products.");
+      setData([]);
+      setTotal(0);
     }
   }, [filters.category, filters.name, filters.sku, page]);
 
@@ -125,12 +137,21 @@ export default function ProductListScreen() {
   const handleDelete = async (row: Record<string, unknown>) => {
     const item = row as ProductListItem;
 
-    await fetch(`/api/products/${item.slug}/delete`, {
-      method: "DELETE",
-    });
+    try {
+      const res = await fetch(`/api/products/${item.slug}/delete`, {
+        method: "DELETE",
+      });
 
-    // Refresh after deletion
-    loadProducts();
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to delete product"));
+      }
+
+      loadProducts();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Failed to delete product");
+    }
   };
 
   /* -----------------------------------------------------------
@@ -144,6 +165,7 @@ export default function ProductListScreen() {
           <Button className="bg-primary text-white">+ Add Product</Button>
         </Link>
       </div>
+      {error ? <div className="mb-4 text-sm text-destructive">{error}</div> : null}
       <Card className="px-10 py-6">
         <Table
           data={data}

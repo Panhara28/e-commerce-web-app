@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type Category = {
   id: number;
@@ -82,7 +83,7 @@ export default function CategoryListScreen() {
       const json = (await res.json()) as CategoryResponse;
 
       if (!res.ok || !json.success) {
-        throw new Error("Failed to load categories");
+        throw new Error(getApiErrorMessage(json, "Failed to load categories"));
       }
 
       setCategories(json.data);
@@ -102,7 +103,7 @@ export default function CategoryListScreen() {
 
     } catch (err) {
       console.error(err);
-      setError("Failed to load categories.");
+      setError(err instanceof Error ? err.message : "Failed to load categories.");
     } finally {
       setLoading(false);
     }
@@ -152,13 +153,16 @@ export default function CategoryListScreen() {
         }),
       });
 
-      if (!res.ok) throw new Error("Operation failed");
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to save category"));
+      }
 
       setIsDialogOpen(false);
       loadCategories();
     } catch (err) {
       console.error(err);
-      setError("Failed to save category.");
+      setError(err instanceof Error ? err.message : "Failed to save category.");
     } finally {
       setLoading(false);
     }
@@ -174,15 +178,15 @@ export default function CategoryListScreen() {
       });
 
       if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || "Failed to delete");
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to delete category"));
       }
 
       setIsDeleteDialogOpen(false);
       loadCategories();
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to delete category.");
+      setError(err instanceof Error ? err.message : "Failed to delete category.");
     } finally {
       setLoading(false);
     }

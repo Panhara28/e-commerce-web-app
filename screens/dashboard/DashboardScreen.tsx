@@ -132,12 +132,14 @@ export default function DashboardScreen() {
       setLoading(true);
       setError("");
       const res = await fetch("/api/dashboard/overview", { cache: "no-store" });
-      const json = (await res.json()) as DashboardResponse;
-      if (!res.ok || !json.success) throw new Error("Failed to load dashboard");
+      const json = (await res.json()) as DashboardResponse & { error?: string };
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Failed to load dashboard (${res.status})`);
+      }
       setDashboard(json);
     } catch (err) {
       console.error(err);
-      setError("Failed to load dashboard data.");
+      setError(err instanceof Error ? err.message : "Failed to load dashboard data.");
       setDashboard(null);
     } finally {
       setLoading(false);

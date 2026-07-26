@@ -60,7 +60,7 @@ export type Variant = {
 };
 
 type MediaFile = {
-  id?: string;
+  id: string;
   url: string;
   name?: string;
   size?: number;

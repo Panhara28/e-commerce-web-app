@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SingleImageUpload } from "@/components/common/single-image-upload";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type CustomerStatus = "ACTIVE" | "INACTIVE" | "DELETED";
 
@@ -123,14 +124,14 @@ export default function CustomerListScreen() {
       const json = (await res.json()) as CustomerListResponse;
 
       if (!res.ok || json.status !== "ok") {
-        throw new Error("Failed to load customers");
+        throw new Error(getApiErrorMessage(json, "Failed to load customers"));
       }
 
       setCustomers(json.data);
       setTotal(json.total);
     } catch (err) {
       console.error(err);
-      setError("Failed to load customers.");
+      setError(err instanceof Error ? err.message : "Failed to load customers.");
       setCustomers([]);
       setTotal(0);
     } finally {
@@ -158,8 +159,8 @@ export default function CustomerListScreen() {
       });
 
       if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || "Failed to create customer");
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to create customer"));
       }
 
       setIsDialogOpen(false);
@@ -174,8 +175,8 @@ export default function CustomerListScreen() {
         profilePicture: "",
       });
       loadCustomers();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create customer");
     } finally {
       setIsSubmitting(false);
     }

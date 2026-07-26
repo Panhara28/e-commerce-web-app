@@ -33,6 +33,7 @@ import {
 
 import { Edit, Copy, Download, MoreVertical } from "lucide-react";
 import Link from "next/link";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 /* -----------------------------------------------------------
    Types
@@ -96,17 +97,17 @@ export default function ProductDetailScreen() {
       try {
         setLoading(true);
         const res = await fetch(`/api/products/${slug}`);
+        const json = await res.json().catch(() => null);
 
         if (!res.ok) {
-          setError("Product not found");
+          setError(getApiErrorMessage(json, "Product not found"));
           return;
         }
 
-        const json = await res.json();
         setProduct(json.data);
       } catch (err) {
         console.error(err);
-        setError("Failed to load product");
+        setError(err instanceof Error ? err.message : "Failed to load product");
       } finally {
         setLoading(false);
       }

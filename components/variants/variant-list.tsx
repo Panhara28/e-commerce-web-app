@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp, Image } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "../ui/checkbox";
 import MediaDialog from "../media-upload/media-dialog";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                     */
@@ -106,7 +108,11 @@ export default function VariantList({ data, onVariantsChange, mediaList: product
     try {
       const res = await fetch("/api/media/list");
       const json = await res.json();
+      if (!res.ok) throw new Error(getApiErrorMessage(json, "Failed to load media"));
       setMediaList(json.media || []);
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Failed to load media");
     } finally {
       setLoading(false);
     }

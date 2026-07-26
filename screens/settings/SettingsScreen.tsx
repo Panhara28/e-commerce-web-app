@@ -127,7 +127,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       });
     } catch (err) {
       console.error(err);
-      setProfileError("Failed to load profile settings.");
+      setProfileError(err instanceof Error ? err.message : "Failed to load profile settings.");
     } finally {
       setLoading(false);
     }
@@ -149,8 +149,9 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       setBanners(json.data.banners || []);
     } catch (err) {
       console.error(err);
-      setExchangeError("Failed to load exchange rate.");
-      setBannerError("Failed to load banners.");
+      const message = err instanceof Error ? err.message : "Failed to load store settings.";
+      setExchangeError(message);
+      setBannerError(message);
     } finally {
       setStoreLoading(false);
     }
@@ -188,7 +189,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       setNotice("Profile updated.");
     } catch (err) {
       console.error(err);
-      setProfileError("Failed to update profile. Check that the email is unique.");
+      setProfileError(err instanceof Error ? err.message : "Failed to update profile.");
     } finally {
       setSavingProfile(false);
     }
@@ -231,7 +232,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       setNotice("Password changed.");
     } catch (err) {
       console.error(err);
-      setPasswordError("Failed to change password. Check the current password.");
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password.");
     } finally {
       setSavingPassword(false);
     }
@@ -258,7 +259,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       setNotice("Exchange rate updated.");
     } catch (err) {
       console.error(err);
-      setExchangeError("Failed to update exchange rate.");
+      setExchangeError(err instanceof Error ? err.message : "Failed to update exchange rate.");
     } finally {
       setSavingExchange(false);
     }
@@ -291,7 +292,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       await loadStoreSettings();
     } catch (err) {
       console.error(err);
-      setBannerError("Failed to update banner.");
+      setBannerError(err instanceof Error ? err.message : "Failed to update banner.");
     } finally {
       setSavingBanner(null);
     }
@@ -313,7 +314,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       await loadStoreSettings();
     } catch (err) {
       console.error(err);
-      setBannerError("Failed to delete banner.");
+      setBannerError(err instanceof Error ? err.message : "Failed to delete banner.");
     } finally {
       setSavingBanner(null);
     }
@@ -342,7 +343,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       await loadStoreSettings();
     } catch (err) {
       console.error(err);
-      setBannerError("Failed to create banner.");
+      setBannerError(err instanceof Error ? err.message : "Failed to create banner.");
     } finally {
       setSavingBanner(null);
     }

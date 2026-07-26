@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AdminUser, formatDate, initials } from "./types";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type UserResponse = {
   success: boolean;
@@ -34,11 +35,11 @@ export default function UserDetailScreen({ slug }: Props) {
         setLoading(true);
         const res = await fetch(`/api/users/${slug}`, { cache: "no-store" });
         const json = (await res.json()) as UserResponse;
-        if (!res.ok || !json.success) throw new Error("Failed to load user");
+        if (!res.ok || !json.success) throw new Error(getApiErrorMessage(json, "Failed to load user"));
         setUser(json.data);
       } catch (err) {
         console.error(err);
-        setError("Failed to load user.");
+        setError(err instanceof Error ? err.message : "Failed to load user.");
       } finally {
         setLoading(false);
       }

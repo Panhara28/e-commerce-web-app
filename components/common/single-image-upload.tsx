@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface SingleImageUploadProps {
   value?: string;
@@ -38,16 +39,16 @@ export function SingleImageUpload({
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(getApiErrorMessage(data, "Upload failed"));
 
-      const data = await res.json();
-      const url = data.uploads?.[0]?.url;
+      const url = data?.uploads?.[0]?.url;
       if (url) {
         onChange(url);
       }
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to upload image");
+      alert(error instanceof Error ? error.message : "Failed to upload image");
     } finally {
       setLoading(false);
       if (fileInputRef.current) {

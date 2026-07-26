@@ -14,11 +14,13 @@ import {
 } from "@/components/ui/dialog";
 
 import { Search, SortAsc, LayoutGrid } from "lucide-react";
+import { toast } from "sonner";
 import MediaGallery from "./media-gallery";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type MediaItem = {
-  id?: string;
-  slug?: string;
+  id: string;
+  slug: string;
   url: string;
   filename?: string;
   name?: string;
@@ -26,7 +28,9 @@ type MediaItem = {
   type?: string;
 };
 
-type UploadingMediaItem = MediaItem & {
+// A locally-created preview doesn't have a server-assigned slug yet.
+type UploadingMediaItem = Omit<MediaItem, "slug"> & {
+  slug?: string;
   file?: File;
   isUploading?: boolean;
 };
@@ -108,11 +112,9 @@ export function MediaUpload({ value = [], onChange }: MediaUploadProps) {
 
       if (!res.ok) {
         setFiles((prev) => prev.filter((f) => !previews.some((p) => p.id === f.id)));
-        return console.error("upload failed", {
-          status: res.status,
-          statusText: res.statusText,
-          data,
-        });
+        console.error("upload failed", { status: res.status, statusText: res.statusText, data });
+        toast.error(getApiErrorMessage(data, "Failed to upload media"));
+        return;
       }
 
       // Normalize uploaded data
@@ -131,6 +133,7 @@ export function MediaUpload({ value = [], onChange }: MediaUploadProps) {
     } catch (error) {
       setFiles((prev) => prev.filter((f) => !previews.some((p) => p.id === f.id)));
       console.error("upload request failed", error);
+      toast.error(error instanceof Error ? error.message : "Failed to upload media");
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -153,10 +156,12 @@ export function MediaUpload({ value = [], onChange }: MediaUploadProps) {
 
       const res = await fetch(`/api/media/list?${params.toString()}`);
       const data = (await res.json()) as MediaListResponse;
+      if (!res.ok) throw new Error(getApiErrorMessage(data, "Failed to load media"));
       setMediaList(data.media || []);
       setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error("Failed to load media:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to load media");
     } finally {
       setLoading(false);
     }

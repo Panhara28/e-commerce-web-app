@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useCart } from "./useCart";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export function useRemoveFromCart() {
   const [loading, setLoading] = useState(false);
@@ -16,11 +18,13 @@ export function useRemoveFromCart() {
         body: JSON.stringify({ itemId }),
       });
 
-      if (!res.ok) throw new Error("Failed to remove item");
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(getApiErrorMessage(json, "Failed to remove item"));
 
       await refresh();
     } catch (err) {
       console.error(err);
+      toast.error(err instanceof Error ? err.message : "Failed to remove item");
     } finally {
       setLoading(false);
     }

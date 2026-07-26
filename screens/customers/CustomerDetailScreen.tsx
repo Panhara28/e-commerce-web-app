@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Mail, ShoppingBag, User, Pencil, UserMinus, UserCheck, Loader2, MapPin, Phone } from "lucide-react";
 import Image from "next/image";
 
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,6 +119,7 @@ export default function CustomerDetailScreen({ slug }: Props) {
     address: "",
     type: "DEFAULT",
     profilePicture: "",
+    password: "",
   });
 
   const loadCustomer = async () => {
@@ -129,7 +131,7 @@ export default function CustomerDetailScreen({ slug }: Props) {
       const json = (await res.json()) as CustomerResponse;
 
       if (!res.ok || !json.success) {
-        throw new Error("Failed to load customer");
+        throw new Error(getApiErrorMessage(json, "Failed to load customer"));
       }
 
       setCustomer(json.data);
@@ -141,10 +143,11 @@ export default function CustomerDetailScreen({ slug }: Props) {
         address: json.data.address || "",
         type: json.data.type || "DEFAULT",
         profilePicture: json.data.profilePicture || "",
+        password: "",
       });
     } catch (err) {
       console.error(err);
-      setError("Failed to load customer.");
+      setError(err instanceof Error ? err.message : "Failed to load customer.");
     } finally {
       setLoading(false);
     }
@@ -168,10 +171,13 @@ export default function CustomerDetailScreen({ slug }: Props) {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (!res.ok) throw new Error("Failed to update status");
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to update status"));
+      }
       loadCustomer();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update status");
     } finally {
       setIsSubmitting(false);
     }
@@ -193,13 +199,13 @@ export default function CustomerDetailScreen({ slug }: Props) {
       });
 
       if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || "Failed to update customer");
+        const json = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(json, "Failed to update customer"));
       }
       setIsEditDialogOpen(false);
       loadCustomer();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update customer");
     } finally {
       setIsSubmitting(false);
     }
@@ -449,8 +455,9 @@ export default function CustomerDetailScreen({ slug }: Props) {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground italic">Password (Leave empty to keep current)</label>
-                    <Input 
+                    <Input
                       type="password"
+                      value={formData.password}
                       onChange={e => setFormData({ ...formData, password: e.target.value })}
                       placeholder="••••••••"
                     />

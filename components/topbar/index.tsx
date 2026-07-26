@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { PanelLeftClose, PanelLeftOpen, User } from "lucide-react";
 import {
@@ -25,8 +26,20 @@ export default function Topbar({
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
 }) {
+  const router = useRouter();
   const [name, setName] = useState("User");
   const [profilePicture, setProfilePicture] = useState("");
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      document.cookie = "admin_token=; path=/; max-age=0";
+      router.push("/views/signin");
+    }
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -101,10 +114,7 @@ export default function Topbar({
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => console.log("Logout clicked")}
-            >
+            <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
