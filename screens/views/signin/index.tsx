@@ -30,12 +30,11 @@ export function SignInForm() {
       })
       const result = await res.json()
 
-      if (!res.ok || !result.token) {
+      if (!res.ok || !result.success) {
         setError(result.error || "Invalid email or password")
         return
       }
 
-      document.cookie = `admin_token=${result.token}; path=/; max-age=${60 * 60 * 24 * 7}`
       router.push("/")
     } catch {
       setError("Unable to sign in. Please try again.")

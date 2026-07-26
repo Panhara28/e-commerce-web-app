@@ -1,10 +1,5 @@
 import { NextRequest } from "next/server";
-
-const API_BASE_URL = (
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:4000"
-).replace(/\/api\/?$/, "");
+import { API_BASE_URL } from "@/lib/api-base-url";
 
 async function proxy(
   request: NextRequest,

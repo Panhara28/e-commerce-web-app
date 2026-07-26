@@ -36,7 +36,6 @@ export default function Topbar({
     } catch (err) {
       console.error(err);
     } finally {
-      document.cookie = "admin_token=; path=/; max-age=0";
       router.push("/views/signin");
     }
   };

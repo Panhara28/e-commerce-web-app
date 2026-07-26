@@ -34,6 +34,7 @@ import {
 import { Edit, Copy, Download, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { getApiErrorMessage } from "@/lib/api-error";
+import DOMPurify from "isomorphic-dompurify";
 
 /* -----------------------------------------------------------
    Types
@@ -157,7 +158,7 @@ export default function ProductDetailScreen() {
       </div>
     );
 
-  const descriptionHtml = getDescriptionHtml(product.description);
+  const descriptionHtml = DOMPurify.sanitize(getDescriptionHtml(product.description));
 
   /* -----------------------------------------------------------
      Main UI (same layout you provided)
