@@ -66,6 +66,7 @@ type OrderDetail = {
     product: {
       title: string;
       productCode: string | null;
+      image?: string | null;
     } | null;
     variant: {
       size: string | null;
@@ -242,9 +243,9 @@ export default function OrderDetailScreen({ slug }: Props) {
                     <TableRow key={item.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          {item.variant?.imageVariant && (
+                          {(item.variant?.imageVariant || item.product?.image) && (
                             <Image
-                              src={item.variant.imageVariant}
+                              src={item.variant?.imageVariant || item.product!.image!}
                               alt={item.product?.title || "Order item"}
                               width={48}
                               height={48}

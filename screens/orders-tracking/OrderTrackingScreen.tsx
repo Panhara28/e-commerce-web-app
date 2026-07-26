@@ -80,7 +80,7 @@ type TrackingOrder = {
     quantity: number;
     price: number;
     total: number;
-    product: { title: string; productCode: string | null; slug: string } | null;
+    product: { title: string; productCode: string | null; slug: string; image?: string | null } | null;
     variant: {
       size: string | null;
       color: string | null;
@@ -497,9 +497,10 @@ export default function OrderTrackingScreen() {
                                 <div
                                   className="h-14 w-14 rounded-md bg-muted bg-cover bg-center border"
                                   style={{
-                                    backgroundImage: item.variant?.imageVariant
-                                      ? `url(${item.variant.imageVariant})`
-                                      : undefined,
+                                    backgroundImage:
+                                      item.variant?.imageVariant || item.product?.image
+                                        ? `url(${item.variant?.imageVariant || item.product?.image})`
+                                        : undefined,
                                   }}
                                 />
                                 <div>
