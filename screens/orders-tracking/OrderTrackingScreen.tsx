@@ -249,10 +249,6 @@ export default function OrderTrackingScreen() {
   const submitAction = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedOrder || !actionStatus) return;
-    if (actionStatus === "ORDER_DELIVERY" && !deliveryFee) {
-      setError("Delivery fee is required.");
-      return;
-    }
     if (actionStatus === "RETURN" && !actionNote.trim()) {
       setError("Return reason is required.");
       return;
