@@ -30,6 +30,9 @@ RUN useradd -m nextjs
 COPY --from=build /app/public ./public
 COPY --from=build --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nextjs /app/.next/static ./.next/static
+# The deploy tooling runs the container read-only with only /tmp writable, so
+# redirect Next's runtime cache there.
+RUN mkdir -p /app/.next && ln -sfn /tmp/next-cache /app/.next/cache
 USER nextjs
 EXPOSE 4000
 CMD ["node", "server.js"]
