@@ -20,6 +20,9 @@ importers:
       '@faker-js/faker':
         specifier: ^10.1.0
         version: 10.4.0
+      '@lexical/clipboard':
+        specifier: ^0.38.2
+        version: 0.38.2
       '@lexical/code':
         specifier: ^0.38.2
         version: 0.38.2

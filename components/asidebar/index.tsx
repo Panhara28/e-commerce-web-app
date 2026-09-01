@@ -98,11 +98,16 @@ export default function Asidebar({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 h-screen -translate-x-full border-r border-sidebar-border bg-sidebar pt-16 transition-[width,transform] duration-300 md:static md:z-0 md:translate-x-0 md:pt-0 ${
+      className={`fixed inset-y-0 left-0 z-40 h-screen -translate-x-full overflow-hidden border-r border-sidebar-border bg-sidebar bg-gradient-to-br from-blue-950 via-blue-800 to-blue-600 pt-16 text-sidebar-foreground transition-[width,transform] duration-300 md:static md:z-0 md:translate-x-0 md:pt-0 ${
         collapsed ? "w-[88px]" : "w-64"
       }`}
     >
-      <div className="flex h-full flex-col">
+      {/* soft light blooms, echoing the sign-in panel */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(147,197,253,0.16),transparent_42%),radial-gradient(circle_at_bottom,rgba(37,99,235,0.22),transparent_45%)]"
+      />
+      <div className="relative z-10 flex h-full flex-col">
         {/* Logo */}
         <div
           className={`hidden border-b border-sidebar-border md:flex ${
@@ -122,8 +127,8 @@ export default function Asidebar({
           </div>
           {!collapsed ? (
             <div>
-              <div className="font-bold text-foreground">Tsportcambodia</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="font-bold text-sidebar-foreground">Tsportcambodia</div>
+              <div className="text-xs text-sidebar-foreground/60">
                 Provide Sport Suite
               </div>
             </div>
@@ -135,7 +140,7 @@ export default function Asidebar({
           <button
             type="button"
             onClick={onToggleCollapsed}
-            className={`flex h-10 items-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-secondary ${
+            className={`flex h-10 items-center rounded-lg border border-sidebar-border bg-white/10 text-sidebar-foreground transition-colors hover:bg-white/15 ${
               collapsed ? "w-full justify-center" : "w-full justify-start px-3"
             }`}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -157,7 +162,7 @@ export default function Asidebar({
             <input
               type="text"
               placeholder="Search..."
-              className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground placeholder-muted-foreground"
+              className="w-full rounded-lg border border-sidebar-border bg-white/10 px-3 py-2 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50 focus:outline-none focus:ring-1 focus:ring-sidebar-ring"
             />
           </div>
         ) : null}
@@ -269,7 +274,7 @@ export default function Asidebar({
           </nav>
         </div>
 
-        <div className={`border-t border-sidebar-border bg-sidebar ${collapsed ? "p-3" : "p-4"}`}>
+        <div className={`border-t border-sidebar-border ${collapsed ? "p-3" : "p-4"}`}>
           <NavItem
             icon={<Settings size={18} />}
             label="Settings"
@@ -285,7 +290,7 @@ export default function Asidebar({
                 : "items-center gap-3 px-3 py-2"
             }`}
           >
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-foreground">
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white/15 text-xs font-semibold text-sidebar-foreground">
               {profile?.profilePicture ? (
                 <Image
                   src={profile.profilePicture}
@@ -300,10 +305,10 @@ export default function Asidebar({
             </div>
             {!collapsed ? (
               <div className="flex-1">
-                <div className="text-sm font-medium text-foreground">
+                <div className="text-sm font-medium text-sidebar-foreground">
                   {profile?.name || "User"}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-sidebar-foreground/60">
                   {profile?.role || "Admin"}
                 </div>
               </div>

@@ -29,11 +29,11 @@ export default function NavItem({
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
         collapsed && "justify-center px-0",
         isActive
-          ? "bg-sidebar-primary text-white font-medium"
-          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
       )}
     >
-      {icon && <span className="text-muted-foreground">{icon}</span>}
+      {icon && <span className="shrink-0">{icon}</span>}
       {!collapsed ? <span>{label}</span> : null}
     </Link>
   );

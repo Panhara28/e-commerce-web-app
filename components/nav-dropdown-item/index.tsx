@@ -54,24 +54,24 @@ export default function NavDropdownItem({
           "flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
           collapsed && "justify-center px-0",
           hasActiveChild
-            ? "bg-sidebar-primary text-white font-medium"
-            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         )}
       >
         <div className="flex items-center gap-3">
-          {icon && <span className="text-muted-foreground">{icon}</span>}
+          {icon && <span className="shrink-0">{icon}</span>}
           {!collapsed ? <span>{label}</span> : null}
           {!collapsed && badge ? (
-            <span className="ml-2 text-xs bg-sidebar-accent text-foreground rounded-md px-1.5 py-0.5">
+            <span className="ml-2 rounded-md bg-white/15 px-1.5 py-0.5 text-xs text-sidebar-foreground">
               {badge}
             </span>
           ) : null}
         </div>
         {!collapsed ? (
           isExpanded ? (
-            <ChevronDown size={16} className="text-muted-foreground" />
+            <ChevronDown size={16} className="text-sidebar-foreground/60" />
           ) : (
-            <ChevronRight size={16} className="text-muted-foreground" />
+            <ChevronRight size={16} className="text-sidebar-foreground/60" />
           )
         ) : null}
       </button>
@@ -88,13 +88,13 @@ export default function NavDropdownItem({
                 className={cn(
                   "flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
                   isActive
-                    ? "bg-sidebar-accent text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    ? "bg-sidebar-accent font-medium text-sidebar-foreground"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
                 <span>{item.label}</span>
                 {item.badge ? (
-                  <span className="rounded-md bg-sidebar-accent px-1.5 py-0.5 text-xs text-foreground">
+                  <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-xs text-sidebar-foreground">
                     {item.badge}
                   </span>
                 ) : null}

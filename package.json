@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 4000",
     "lint": "eslint"
   },
   "dependencies": {
@@ -13,6 +13,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@faker-js/faker": "^10.1.0",
+    "@lexical/clipboard": "^0.38.2",
     "@lexical/code": "^0.38.2",
     "@lexical/html": "^0.38.2",
     "@lexical/list": "^0.38.2",

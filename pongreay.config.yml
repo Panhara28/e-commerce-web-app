@@ -1,0 +1,12 @@
+project: tsport-admin
+healthPath: /health
+
+environments:
+  production:
+    server: deploy@167.71.203.244
+    branch: main
+    appName: tsport-admin
+    imageName: tsport-admin
+    envFileOnServer: /etc/pongreay/tsport-admin/production.env
+    hostPort: 4000
+    containerPort: 4000
