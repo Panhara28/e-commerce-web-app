@@ -34,10 +34,19 @@ async function proxy(
 
   const upstream = await fetch(target, init);
 
+  // `fetch` has already decoded the body, so the upstream's transfer/length/
+  // encoding headers no longer describe what we're about to send. Forwarding
+  // them (e.g. a stale `content-encoding: br` from Cloudflare) makes the browser
+  // try to decompress plain JSON — "Unexpected end of JSON input".
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.delete("content-encoding");
+  responseHeaders.delete("content-length");
+  responseHeaders.delete("transfer-encoding");
+
   return new Response(upstream.body, {
     status: upstream.status,
     statusText: upstream.statusText,
-    headers: upstream.headers,
+    headers: responseHeaders,
   });
 }
 

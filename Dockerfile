@@ -31,8 +31,12 @@ COPY --from=build /app/public ./public
 COPY --from=build --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nextjs /app/.next/static ./.next/static
 # The deploy tooling runs the container read-only with only /tmp writable, so
-# redirect Next's runtime cache there.
-RUN mkdir -p /app/.next && ln -sfn /tmp/next-cache /app/.next/cache
+# redirect Next's runtime cache there. The entrypoint creates the target dir
+# (the build-time /tmp is hidden by the runtime tmpfs mount).
+RUN mkdir -p /app/.next \
+ && ln -sfn /tmp/next-cache/admin /app/.next/cache \
+ && printf '#!/bin/sh\nmkdir -p /tmp/next-cache/admin\nexec node server.js\n' > /app/entrypoint.sh \
+ && chmod 755 /app/entrypoint.sh
 USER nextjs
 EXPOSE 4000
-CMD ["node", "server.js"]
+CMD ["/app/entrypoint.sh"]
