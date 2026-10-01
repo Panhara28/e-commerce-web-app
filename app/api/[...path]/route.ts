@@ -12,6 +12,11 @@ async function proxy(
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("content-length");
+  // The browser's Accept-Encoding often includes "zstd", which Node's fetch
+  // (undici) does not auto-decompress. If Cloudflare picks zstd for the
+  // upstream response, we'd forward the still-compressed bytes to the browser
+  // as if they were plain JSON. Restrict to encodings undici decodes for us.
+  headers.set("accept-encoding", "gzip, deflate, br");
 
   // Individual screens call fetch("/api/...") without attaching a token, so
   // inject it here from the login cookie rather than touching every call site.
