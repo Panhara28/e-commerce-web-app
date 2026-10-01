@@ -81,7 +81,6 @@ const emptyPassword = {
 };
 
 const emptyBanner = {
-  name: "",
   image: "",
 };
 
@@ -265,15 +264,15 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
     }
   };
 
-  const updateBannerForm = (id: number, field: "name" | "image", value: string) => {
+  const updateBannerForm = (id: number, field: "image", value: string) => {
     setBanners((current) =>
       current.map((banner) => (banner.id === id ? { ...banner, [field]: value } : banner)),
     );
   };
 
   const saveBanner = async (banner: BannerItem) => {
-    if (!banner.name?.trim() || !banner.image?.trim()) {
-      setBannerError("Banner name and image are required.");
+    if (!banner.image?.trim()) {
+      setBannerError("Banner image is required.");
       return;
     }
 
@@ -284,7 +283,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       const res = await fetch(`/api/settings/banners/${banner.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: banner.name, image: banner.image }),
+        body: JSON.stringify({ name: banner.name || `Banner ${banner.id}`, image: banner.image }),
       });
       const json = (await res.json()) as { success: boolean; message?: string };
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to save banner");
@@ -322,8 +321,8 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
 
   const createBanner = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!newBanner.name.trim() || !newBanner.image.trim()) {
-      setBannerError("Banner name and image are required.");
+    if (!newBanner.image.trim()) {
+      setBannerError("Banner image is required.");
       return;
     }
 
@@ -334,7 +333,7 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
       const res = await fetch("/api/settings/banners", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newBanner),
+        body: JSON.stringify({ name: `Banner ${Date.now()}`, image: newBanner.image }),
       });
       const json = (await res.json()) as { success: boolean; message?: string };
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to create banner");
@@ -613,19 +612,15 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
               <CardTitle>Create Banner</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={createBanner} className="grid gap-4 lg:grid-cols-[1fr_1.5fr_auto] lg:items-end">
-                <Field label="Name">
-                  <Input
-                    value={newBanner.name}
-                    onChange={(event) => setNewBanner((current) => ({ ...current, name: event.target.value }))}
-                    placeholder="Homepage banner"
-                  />
-                </Field>
-                <Field label="Image URL">
-                  <Input
+              <form onSubmit={createBanner} className="grid gap-4 lg:grid-cols-[260px_auto] lg:items-end">
+                <Field label="Image">
+                  <SingleImageUpload
                     value={newBanner.image}
-                    onChange={(event) => setNewBanner((current) => ({ ...current, image: event.target.value }))}
-                    placeholder="https://example.com/banner.jpg"
+                    onChange={(url) => setNewBanner((current) => ({ ...current, image: url }))}
+                    width={260}
+                    height={114}
+                    label=""
+                    folder="banners"
                   />
                 </Field>
                 <Button type="submit" disabled={savingBanner === "new"}>
@@ -642,25 +637,17 @@ export default function SettingsScreen({ defaultTab = "profile" }: SettingsScree
             ) : banners.length ? (
               banners.map((banner) => (
                 <Card key={banner.id} className="rounded-lg">
-                  <CardContent className="grid gap-4 pt-6 lg:grid-cols-[260px_1fr_auto] lg:items-end">
-                    <div
-                      className="aspect-[16/7] rounded-md border bg-muted bg-cover bg-center"
-                      style={{ backgroundImage: banner.image ? `url(${banner.image})` : undefined }}
-                    />
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Field label="Name">
-                        <Input
-                          value={banner.name || ""}
-                          onChange={(event) => updateBannerForm(banner.id, "name", event.target.value)}
-                        />
-                      </Field>
-                      <Field label="Image URL">
-                        <Input
-                          value={banner.image || ""}
-                          onChange={(event) => updateBannerForm(banner.id, "image", event.target.value)}
-                        />
-                      </Field>
-                    </div>
+                  <CardContent className="grid gap-4 pt-6 lg:grid-cols-[260px_auto] lg:items-end">
+                    <Field label="Image">
+                      <SingleImageUpload
+                        value={banner.image || ""}
+                        onChange={(url) => updateBannerForm(banner.id, "image", url)}
+                        width={260}
+                        height={114}
+                        label=""
+                        folder="banners"
+                      />
+                    </Field>
                     <div className="flex gap-2">
                       <Button onClick={() => saveBanner(banner)} disabled={savingBanner === banner.id}>
                         {savingBanner === banner.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

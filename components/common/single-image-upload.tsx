@@ -12,6 +12,7 @@ interface SingleImageUploadProps {
   width?: number;
   height?: number;
   label?: string;
+  folder?: string;
 }
 
 export function SingleImageUpload({
@@ -20,6 +21,7 @@ export function SingleImageUpload({
   width = 150,
   height = 150,
   label = "Profile Picture",
+  folder = "profiles",
 }: SingleImageUploadProps) {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -32,7 +34,7 @@ export function SingleImageUpload({
       setLoading(true);
       const formData = new FormData();
       formData.append("files", file);
-      formData.append("folder", "profiles");
+      formData.append("folder", folder);
 
       const res = await fetch("/api/multiple-upload", {
         method: "POST",
