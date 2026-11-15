@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "sonner";
+import PinnedProductsPanel from "./PinnedProductsPanel";
 
 /* -----------------------------------------------------------
    Types
@@ -18,6 +20,7 @@ type ProductListItem = {
   price: number;
   category: string | null;
   slug: string;
+  pinned: boolean;
 };
 
 type ProductApiItem = {
@@ -26,6 +29,7 @@ type ProductApiItem = {
   title: string | null;
   productCode: string | null;
   price: number;
+  pinOrder?: number | null;
   Category?: {
     name?: string | null;
     title?: string | null;
@@ -58,6 +62,7 @@ export default function ProductListScreen() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
+  const [pinnedRefreshKey, setPinnedRefreshKey] = useState(0);
 
   const pageSize = 10;
 
@@ -104,6 +109,7 @@ export default function ProductListScreen() {
           sku: item.productCode || item.variants?.[0]?.barcode || "-",
           price: item.price,
           category: item.Category?.name || item.Category?.title || null,
+          pinned: item.pinOrder !== null && item.pinOrder !== undefined,
         })),
       );
       setTotal(json.total);
@@ -148,9 +154,44 @@ export default function ProductListScreen() {
       }
 
       loadProducts();
+      setPinnedRefreshKey((k) => k + 1);
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "Failed to delete product");
+    }
+  };
+
+  /* -------- Pin / Unpin Product -------- */
+  const handleTogglePin = async (row: Record<string, unknown>) => {
+    const item = row as ProductListItem;
+    const pinned = !item.pinned;
+
+    try {
+      const res = await fetch(`/api/products/${item.slug}/pin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(
+          getApiErrorMessage(json, `Failed to ${pinned ? "pin" : "unpin"} product`),
+        );
+      }
+
+      toast.success(
+        pinned
+          ? `"${item.name}" pinned to the top of the storefront`
+          : `"${item.name}" unpinned`,
+      );
+      await loadProducts();
+      setPinnedRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update pin",
+      );
     }
   };
 
@@ -166,6 +207,7 @@ export default function ProductListScreen() {
         </Link>
       </div>
       {error ? <div className="mb-4 text-sm text-destructive">{error}</div> : null}
+      <PinnedProductsPanel refreshKey={pinnedRefreshKey} onChange={loadProducts} />
       <Card className="px-10 py-6">
         <Table
           data={data}
@@ -183,6 +225,8 @@ export default function ProductListScreen() {
           }
           onDelete={handleDelete}
           onDeleteComplete={loadProducts} // 🔥 auto refresh after deletion
+          isPinned={(row) => Boolean(row.pinned)}
+          onTogglePin={handleTogglePin}
         />
       </Card>
     </LayoutWrapper>

@@ -31,7 +31,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 
-import { Eye, Edit, Trash2 } from "lucide-react";
+import { Eye, Edit, Trash2, Pin, PinOff } from "lucide-react";
 
 /* --------------------------------------------------------
    TYPES
@@ -65,6 +65,10 @@ export interface DynamicTableProps {
 
   /** ✅ Added fix */
   onDeleteComplete?: () => void;
+
+  /** Shows a pin/unpin action when provided. */
+  isPinned?: (row: Record<string, unknown>) => boolean;
+  onTogglePin?: (row: Record<string, unknown>) => Promise<void>;
 }
 
 /* --------------------------------------------------------
@@ -83,6 +87,8 @@ export default function DynamicTable({
   onEdit,
   onDelete,
   onDeleteComplete,
+  isPinned,
+  onTogglePin,
 }: DynamicTableProps) {
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -90,6 +96,18 @@ export default function DynamicTable({
     string,
     unknown
   > | null>(null);
+  const [pinningKey, setPinningKey] = useState<string | null>(null);
+
+  const handleTogglePin = async (row: Record<string, unknown>) => {
+    if (!onTogglePin) return;
+    const key = String(row.id);
+    setPinningKey(key);
+    try {
+      await onTogglePin(row);
+    } finally {
+      setPinningKey(null);
+    }
+  };
 
   /* ---------------- HANDLE DELETE CLICK ---------------- */
   const confirmDelete = (row: Record<string, unknown>) => {
@@ -190,13 +208,47 @@ export default function DynamicTable({
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((row, index) => (
-                <TableRow key={String(row.id) || index}>
-                  {columns.map((col) => (
-                    <TableCell key={col}>{String(row[col] ?? "")}</TableCell>
+              data.map((row, index) => {
+                const pinned = isPinned?.(row) ?? false;
+                return (
+                <TableRow
+                  key={String(row.id) || index}
+                  className={pinned ? "bg-amber-50/60 dark:bg-amber-950/20" : undefined}
+                >
+                  {columns.map((col, colIndex) => (
+                    <TableCell key={col}>
+                      {colIndex === 0 && pinned ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Pin
+                            className="h-3.5 w-3.5 fill-amber-500 text-amber-500"
+                            aria-label="Pinned"
+                          />
+                          {String(row[col] ?? "")}
+                        </span>
+                      ) : (
+                        String(row[col] ?? "")
+                      )}
+                    </TableCell>
                   ))}
 
                   <TableCell className="flex justify-end gap-2">
+                    {onTogglePin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={pinningKey === String(row.id)}
+                        onClick={() => handleTogglePin(row)}
+                        title={pinned ? "Unpin product" : "Pin to top of storefront"}
+                        aria-label={pinned ? "Unpin product" : "Pin product"}
+                      >
+                        {pinned ? (
+                          <PinOff className="h-4 w-4 text-amber-600" />
+                        ) : (
+                          <Pin className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+
                     <Link href={`/products/${row.slug}`} passHref>
                       <Button variant="ghost" size="sm">
                         <Eye className="h-4 w-4" />
@@ -218,7 +270,8 @@ export default function DynamicTable({
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </ShadTable>
